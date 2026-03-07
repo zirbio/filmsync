@@ -7,6 +7,7 @@ import { STREAMING_PROVIDERS } from "@/types";
 interface RecommendationCardProps {
   recommendation: Recommendation;
   onDismiss: (tmdbId: number, type: "movie" | "tv") => void;
+  inWatchlist?: boolean;
 }
 
 const PROVIDER_COLORS: Record<StreamingProviderKey, string> = {
@@ -20,6 +21,7 @@ const PROVIDER_COLORS: Record<StreamingProviderKey, string> = {
 export function RecommendationCard({
   recommendation,
   onDismiss,
+  inWatchlist,
 }: RecommendationCardProps) {
   const { title, reason, score } = recommendation;
   const posterUrl = title.posterPath
@@ -85,6 +87,12 @@ export function RecommendationCard({
             </span>
           ))}
         </div>
+
+        {inWatchlist && (
+          <span className="mt-1 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+            En tu watchlist
+          </span>
+        )}
 
         <p className="mt-3 flex-1 text-sm italic text-gray-600 dark:text-gray-400">
           &ldquo;{reason}&rdquo;
