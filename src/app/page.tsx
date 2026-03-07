@@ -1,65 +1,160 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { Filters } from "@/components/Filters";
+import { RecommendationCard } from "@/components/RecommendationCard";
+import { SetupPanel } from "@/components/SetupPanel";
+import type {
+  Recommendation,
+  RecommendationFilters,
+  RecommendationCache,
+  TasteProfile,
+  TMDBGenre,
+} from "@/types";
+
+type AppState = "loading" | "setup" | "ready";
+
+const DEFAULT_FILTERS: RecommendationFilters = {
+  providers: ["netflix", "hbo", "prime", "disney", "apple"],
+  type: "all",
+  genres: [],
+  minYear: null,
+  minRating: null,
+  maxDuration: null,
+};
 
 export default function Home() {
+  const [appState, setAppState] = useState<AppState>("loading");
+  const [filters, setFilters] = useState<RecommendationFilters>(DEFAULT_FILTERS);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [genres, setGenres] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState<TasteProfile | null>(null);
+
+  useEffect(() => {
+    async function checkSetup() {
+      try {
+        const [profileRes, genresRes] = await Promise.all([
+          fetch("/api/profile"),
+          fetch("/api/genres"),
+        ]);
+
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setProfile(profileData);
+          setAppState("ready");
+
+          const cacheRes = await fetch("/api/recommendations");
+          if (cacheRes.ok) {
+            const cache: RecommendationCache = await cacheRes.json();
+            setRecommendations(cache.recommendations);
+            setFilters(cache.filters);
+          }
+        } else {
+          setAppState("setup");
+        }
+
+        if (genresRes.ok) {
+          const genreData: TMDBGenre[] = await genresRes.json();
+          setGenres(genreData.map((g) => g.name));
+        }
+      } catch {
+        setAppState("setup");
+      }
+    }
+    checkSetup();
+  }, []);
+
+  const generateRecommendations = useCallback(async () => {
+    setLoading(true);
+    try {
+      await fetch("/api/streaming", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          providers: filters.providers,
+          type: filters.type,
+          minYear: filters.minYear,
+          minRating: filters.minRating,
+        }),
+      });
+
+      const res = await fetch("/api/recommendations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(filters),
+      });
+      const data: RecommendationCache = await res.json();
+      setRecommendations(data.recommendations ?? []);
+    } catch (error) {
+      console.error("Error generating recommendations:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]);
+
+  const dismissTitle = async (tmdbId: number, type: "movie" | "tv") => {
+    await fetch("/api/watched", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tmdbId, type }),
+    });
+    setRecommendations((prev) =>
+      prev.filter((r) => r.title.tmdbId !== tmdbId)
+    );
+  };
+
+  if (appState === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (appState === "setup") {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <SetupPanel onComplete={() => setAppState("ready")} />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="mx-auto max-w-4xl px-4 py-8">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          Mi Recomendador
+        </h1>
+        {profile && (
+          <p className="mt-2 text-sm text-gray-500">
+            {profile.taste_summary.slice(0, 150)}...
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        )}
+      </header>
+
+      <Filters
+        filters={filters}
+        genres={genres}
+        onChange={setFilters}
+        onGenerate={generateRecommendations}
+        loading={loading}
+      />
+
+      <div className="mt-8 space-y-4">
+        {recommendations.length === 0 && !loading && (
+          <p className="text-center text-gray-500">
+            Pulsa &ldquo;Generar recomendaciones&rdquo; para empezar.
+          </p>
+        )}
+        {recommendations.map((rec) => (
+          <RecommendationCard
+            key={`${rec.title.tmdbId}-${rec.title.type}`}
+            recommendation={rec}
+            onDismiss={dismissTitle}
+          />
+        ))}
+      </div>
+    </main>
   );
 }
