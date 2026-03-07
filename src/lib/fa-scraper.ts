@@ -12,11 +12,15 @@ export async function scrapeFilmAffinity(
 ): Promise<FilmAffinityRating[]> {
   const outputPath = path.resolve(process.cwd(), "data/fa_scraped.csv");
 
-  await execFileAsync(
-    "fa-scraper",
-    [userId, "--csv", outputPath, "--lang", "en"],
-    { timeout: 120_000 }
-  );
+  try {
+    await execFileAsync(
+      "fa-scraper",
+      [userId, "--csv", outputPath, "--lang", "en"],
+      { timeout: 120_000 }
+    );
+  } catch {
+    return [];
+  }
 
   const ratings = await parseFilmAffinityCSV(outputPath);
 
