@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Data cache files
+data/enriched_ratings.json
+data/taste_profile.json
+data/streaming_catalog.json
+data/recommendations_cache.json
+data/watched.json
+
+# Keep CSV tracked
+!data/filmaffinity_ratings.csv
