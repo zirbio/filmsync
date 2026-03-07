@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { scrapeFilmAffinity } from "@/lib/fa-scraper";
+import { parseFilmAffinityCSV } from "@/lib/csv-parser";
 import { searchMovie, searchTV } from "@/lib/tmdb";
 import { readCache, writeCache } from "@/lib/cache";
 import type { LastSync, SyncDiff, SyncItem, FilmAffinityRating } from "@/types";
+import path from "path";
 
 async function resolveToTmdb(
   rating: FilmAffinityRating
@@ -51,7 +53,20 @@ export async function POST() {
       );
     }
 
-    const faRatings = await scrapeFilmAffinity(userId);
+    let faRatings = await scrapeFilmAffinity(userId);
+
+    if (faRatings.length === 0) {
+      const csvPath = path.resolve(process.cwd(), "data/filmaffinity_ratings.csv");
+      try {
+        faRatings = await parseFilmAffinityCSV(csvPath);
+      } catch {
+        return NextResponse.json(
+          { error: "FilmAffinity no respondio y no hay CSV local disponible. Intenta mas tarde." },
+          { status: 503 }
+        );
+      }
+    }
+
     const lastSync = await readCache<LastSync>("last_sync.json");
     const syncedSet = new Set(
       lastSync?.syncedTitles.map((t) => `${t.title}-${t.year}`) ?? []
