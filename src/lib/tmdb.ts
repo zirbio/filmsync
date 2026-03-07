@@ -3,7 +3,6 @@ import type {
   TMDBTVShow,
   TMDBGenre,
   StreamingProviderKey,
-  StreamingTitle,
 } from "@/types";
 import { STREAMING_PROVIDERS } from "@/types";
 
