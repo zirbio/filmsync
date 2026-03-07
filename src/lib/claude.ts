@@ -10,6 +10,12 @@ function getClient(): Anthropic {
   return new Anthropic();
 }
 
+function extractJSON(text: string): string {
+  const match = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (match) return match[1].trim();
+  return text.trim();
+}
+
 export async function generateTasteProfile(
   ratings: EnrichedRating[]
 ): Promise<TasteProfile> {
@@ -27,7 +33,7 @@ export async function generateTasteProfile(
     .join("\n");
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-5-20250514",
+    model: "claude-sonnet-4-5-20250929",
     max_tokens: 4096,
     messages: [
       {
@@ -59,7 +65,7 @@ Responde SOLO con el JSON, sin texto adicional.`,
   }
 
   const profile: TasteProfile = {
-    ...JSON.parse(content.text),
+    ...JSON.parse(extractJSON(content.text)),
     generated_at: new Date().toISOString(),
   };
 
@@ -86,7 +92,7 @@ export async function generateRecommendations(
       : "";
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-5-20250514",
+    model: "claude-sonnet-4-5-20250929",
     max_tokens: 8192,
     messages: [
       {
@@ -124,7 +130,7 @@ Ordena de mayor a menor score. Responde SOLO con el JSON.`,
   }
 
   const parsed: { index: number; score: number; reason: string }[] = JSON.parse(
-    content.text
+    extractJSON(content.text)
   );
 
   return parsed
