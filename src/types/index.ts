@@ -119,3 +119,50 @@ export interface RecommendationCache {
   recommendations: Recommendation[];
   generated_at: string;
 }
+
+// --- Trakt Sync Types ---
+
+export interface TraktToken {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token: string;
+  scope: string;
+  created_at: number;
+}
+
+export interface SyncItem {
+  title: string;
+  year: number;
+  rating10: number;
+  tmdbId: number | null;
+  tmdbType: "movie" | "tv" | null;
+  watchedDate: string;
+}
+
+export interface SyncDiff {
+  newRatings: SyncItem[];
+  totalFA: number;
+  totalSynced: number;
+}
+
+export interface SyncResult {
+  syncedCount: number;
+  removedFromWatchlist: number;
+}
+
+export interface LastSync {
+  syncedTitles: { title: string; year: number }[];
+  lastSyncDate: string;
+}
+
+export interface TraktWatchlistItem {
+  title: string;
+  year: number;
+  tmdbId: number;
+  type: "movie" | "tv";
+  posterPath: string | null;
+  genres: string[];
+  tmdbRating: number | null;
+  providers: StreamingProviderKey[];
+}
