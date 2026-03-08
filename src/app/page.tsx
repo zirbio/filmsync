@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { motion } from "motion/react";
 import { Filters } from "@/components/Filters";
 import { RecommendationCard } from "@/components/RecommendationCard";
 import { SetupPanel } from "@/components/SetupPanel";
@@ -8,42 +9,29 @@ import type {
   Recommendation,
   RecommendationFilters,
   RecommendationCache,
-  TasteProfile,
-  TMDBGenre,
 } from "@/types";
 
 type AppState = "loading" | "setup" | "ready";
 
 const DEFAULT_FILTERS: RecommendationFilters = {
   providers: ["netflix", "hbo", "prime", "disney", "apple"],
-  type: "all",
-  genres: [],
+  type: "movie",
+  genreCategories: [],
   minYear: null,
-  minRating: null,
-  maxDuration: null,
 };
 
 export default function Home() {
   const [appState, setAppState] = useState<AppState>("loading");
   const [filters, setFilters] = useState<RecommendationFilters>(DEFAULT_FILTERS);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [genres, setGenres] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [profile, setProfile] = useState<TasteProfile | null>(null);
 
   useEffect(() => {
     async function checkSetup() {
       try {
-        const [profileRes, genresRes] = await Promise.all([
-          fetch("/api/profile"),
-          fetch("/api/genres"),
-        ]);
-
-        if (profileRes.ok) {
-          const profileData = await profileRes.json();
-          setProfile(profileData);
+        const enrichRes = await fetch("/api/enrich");
+        if (enrichRes.ok) {
           setAppState("ready");
-
           const cacheRes = await fetch("/api/recommendations");
           if (cacheRes.ok) {
             const cache: RecommendationCache = await cacheRes.json();
@@ -52,11 +40,6 @@ export default function Home() {
           }
         } else {
           setAppState("setup");
-        }
-
-        if (genresRes.ok) {
-          const genreData: TMDBGenre[] = await genresRes.json();
-          setGenres(genreData.map((g) => g.name));
         }
       } catch {
         setAppState("setup");
@@ -68,17 +51,6 @@ export default function Home() {
   const generateRecommendations = useCallback(async () => {
     setLoading(true);
     try {
-      await fetch("/api/streaming", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          providers: filters.providers,
-          type: filters.type,
-          minYear: filters.minYear,
-          minRating: filters.minRating,
-        }),
-      });
-
       const res = await fetch("/api/recommendations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -107,54 +79,103 @@ export default function Home() {
   if (appState === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
+        <motion.div
+          className="text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
+        >
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </motion.div>
       </div>
     );
   }
 
   if (appState === "setup") {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="flex min-h-screen items-center justify-center px-4">
         <SetupPanel onComplete={() => setAppState("ready")} />
       </div>
     );
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+    <main className="mx-auto max-w-5xl px-4 py-16 md:px-8 md:py-24">
+      <motion.header
+        className="mb-16 md:mb-24"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
+        <h1 className="font-display text-5xl tracking-tight text-foreground md:text-6xl lg:text-7xl">
           Mi Recomendador
         </h1>
-        {profile && (
-          <p className="mt-2 text-sm text-gray-500">
-            {profile.taste_summary.slice(0, 150)}...
-          </p>
-        )}
-      </header>
+      </motion.header>
 
-      <Filters
-        filters={filters}
-        genres={genres}
-        onChange={setFilters}
-        onGenerate={generateRecommendations}
-        loading={loading}
-      />
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.15, ease: "easeOut" }}
+      >
+        <Filters
+          filters={filters}
+          onChange={setFilters}
+          onGenerate={generateRecommendations}
+          loading={loading}
+        />
+      </motion.section>
 
-      <div className="mt-8 space-y-4">
+      <section className="mt-16 md:mt-24">
         {recommendations.length === 0 && !loading && (
-          <p className="text-center text-gray-500">
-            Pulsa &ldquo;Generar recomendaciones&rdquo; para empezar.
-          </p>
+          <motion.div
+            className="py-24 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+          >
+            <p className="font-display text-2xl text-foreground-subtle md:text-3xl">
+              Pulsa &ldquo;Generar recomendaciones&rdquo; para empezar
+            </p>
+          </motion.div>
         )}
-        {recommendations.map((rec) => (
-          <RecommendationCard
-            key={`${rec.title.tmdbId}-${rec.title.type}`}
-            recommendation={rec}
-            onDismiss={dismissTitle}
-          />
-        ))}
-      </div>
+
+        {loading && (
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className="aspect-[2/3] rounded-lg bg-background-elevated" />
+                <div className="mt-5 space-y-3">
+                  <div className="h-6 w-3/4 rounded bg-background-elevated" />
+                  <div className="h-4 w-1/2 rounded bg-background-elevated" />
+                  <div className="h-20 w-full rounded bg-background-elevated" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {recommendations.length > 0 && !loading && (
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+            {recommendations.map((rec) => (
+              <motion.div
+                key={`${rec.title.tmdbId}-${rec.title.type}`}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{
+                  duration: 0.5,
+                  ease: "easeOut",
+                }}
+              >
+                <RecommendationCard
+                  recommendation={rec}
+                  onDismiss={dismissTitle}
+                />
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </section>
     </main>
   );
 }
