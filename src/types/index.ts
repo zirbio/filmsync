@@ -64,16 +64,6 @@ export interface EnrichedRating extends FilmAffinityRating {
   runtime: number | null;
 }
 
-export interface TasteProfile {
-  preferred_genres: string[];
-  preferred_directors: string[];
-  preferred_themes: string[];
-  preferred_decades: string[];
-  avoid_patterns: string[];
-  taste_summary: string;
-  generated_at: string;
-}
-
 export const STREAMING_PROVIDERS = {
   netflix: { id: 8, name: "Netflix", logo: "/logos/netflix.svg" },
   hbo: { id: 384, name: "Max (HBO)", logo: "/logos/hbo.svg" },
