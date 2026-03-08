@@ -1,10 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type {
-  EnrichedRating,
-  TasteProfile,
-  StreamingTitle,
-  Recommendation,
-} from "@/types";
+import type { EnrichedRating, ClaudeRecommendation } from "@/types";
 
 function getClient(): Anthropic {
   return new Anthropic();
@@ -16,80 +11,29 @@ function extractJSON(text: string): string {
   return text.trim();
 }
 
-export async function generateTasteProfile(
-  ratings: EnrichedRating[]
-): Promise<TasteProfile> {
+export async function generateRecommendations(
+  filteredRatings: EnrichedRating[],
+  filters: {
+    type: "movie" | "tv";
+    genreCategories: string[];
+    platforms: string[];
+  }
+): Promise<ClaudeRecommendation[]> {
   const client = getClient();
 
-  const sorted = [...ratings]
-    .filter((r) => r.tmdbId !== null)
-    .sort((a, b) => b.rating10 - a.rating10);
+  const typeLabel = filters.type === "movie" ? "películas" : "series";
+  const genreLabel =
+    filters.genreCategories.length > 0
+      ? filters.genreCategories.join(", ")
+      : "todos los géneros";
+  const platformLabel = filters.platforms.join(", ");
 
-  const ratingsText = sorted
+  const ratingsText = filteredRatings
     .map(
       (r) =>
-        `- "${r.title}" (${r.year}) — Nota: ${r.rating10}/10 — Generos: ${r.genres.join(", ") || "N/A"} — Director: ${r.directors} — Temas: ${r.keywords.slice(0, 5).join(", ") || "N/A"}`
+        `- "${r.title}" (${r.year}) — Director: ${r.directors} — Nota: ${r.rating10}/10`
     )
     .join("\n");
-
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-5-20250929",
-    max_tokens: 4096,
-    messages: [
-      {
-        role: "user",
-        content: `Eres un experto en cine y series. Analiza las siguientes valoraciones de un usuario y genera un perfil detallado de sus gustos cinematograficos.
-
-VALORACIONES DEL USUARIO (${sorted.length} titulos, ordenados de mayor a menor nota):
-
-${ratingsText}
-
-Genera un perfil de gustos en formato JSON con esta estructura exacta:
-{
-  "preferred_genres": ["lista de generos preferidos, ordenados por preferencia"],
-  "preferred_directors": ["lista de directores favoritos basado en las notas altas"],
-  "preferred_themes": ["temas y tematicas recurrentes en sus favoritos"],
-  "preferred_decades": ["decadas preferidas"],
-  "avoid_patterns": ["patrones que no le gustan, basado en notas bajas"],
-  "taste_summary": "Un parrafo describiendo el perfil cinematografico del usuario, su estilo, lo que busca en una pelicula/serie, patrones interesantes"
-}
-
-Responde SOLO con el JSON, sin texto adicional.`,
-      },
-    ],
-  });
-
-  const content = message.content[0];
-  if (content.type !== "text") {
-    throw new Error("Unexpected response type from Claude");
-  }
-
-  const profile: TasteProfile = {
-    ...JSON.parse(extractJSON(content.text)),
-    generated_at: new Date().toISOString(),
-  };
-
-  return profile;
-}
-
-export async function generateRecommendations(
-  profile: TasteProfile,
-  availableTitles: StreamingTitle[],
-  watchedTitles: string[]
-): Promise<Recommendation[]> {
-  const client = getClient();
-
-  const titlesText = availableTitles
-    .map(
-      (t, i) =>
-        `${i + 1}. "${t.title}" (${t.year}) — ${t.type === "movie" ? "Pelicula" : "Serie"} — Generos: ${t.genres.join(", ")} — Director: ${t.directors.join(", ")} — TMDB: ${t.tmdbRating}/10 — Plataformas: ${t.providers.join(", ")} — Sinopsis: ${t.overview.slice(0, 150)}`
-    )
-    .join("\n");
-
-  const watchedText =
-    watchedTitles.length > 0
-      ? `\nTITULOS YA VISTOS (NO recomendar estos):\n${watchedTitles.join(", ")}`
-      : "";
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-5-20250929",
@@ -97,29 +41,34 @@ export async function generateRecommendations(
     messages: [
       {
         role: "user",
-        content: `Eres un experto en recomendaciones de cine y series. Basandote en el perfil de gustos de un usuario, recomienda las mejores peliculas y series de la lista disponible.
+        content: `Eres un crítico de cine experto con conocimiento enciclopédico del cine y las series. Tu tarea es recomendar ${typeLabel} a un usuario basándote en su historial de valoraciones.
 
-PERFIL DE GUSTOS DEL USUARIO:
-${JSON.stringify(profile, null, 2)}
-${watchedText}
+HISTORIAL DEL USUARIO (${filteredRatings.length} títulos de ${genreLabel} que ha valorado, ordenados de mayor a menor nota):
 
-TITULOS DISPONIBLES EN STREAMING:
-${titlesText}
+${ratingsText}
 
-Selecciona los 20 titulos que MEJOR encajan con los gustos del usuario. Para cada uno, explica brevemente POR QUE le gustaria a este usuario en particular.
+INSTRUCCIONES:
+- Recomienda exactamente 20 ${typeLabel} del género ${genreLabel} que estén disponibles en streaming en España (${platformLabel}).
+- Basa tus recomendaciones en tu propio conocimiento cinematográfico. NO inventes títulos que no existan.
+- Prioriza títulos que compartan ADN con los que el usuario puntuó más alto: mismo director, misma escuela cinematográfica, temáticas afines, tono similar.
+- NO recomiendes documentales, stand-ups, conciertos, especiales de TV ni programas de telerrealidad.
+- NO recomiendes ningún título que aparezca en el historial del usuario.
+- En la explicación, referencia títulos concretos del historial del usuario. Ejemplo: "Si te gustó Goodfellas por su retrato del crimen organizado, esta te enganchará por...".
+- Sé honesto: si no estás seguro de que un título esté disponible en streaming en España, inclúyelo igualmente con un score más bajo.
+- El tono de las explicaciones debe ser entre cinéfilo y casual, como un amigo que sabe mucho de cine.
 
-Responde en formato JSON con esta estructura exacta:
+Responde SOLO con un JSON array con esta estructura exacta:
 [
   {
-    "index": 1,
-    "score": 95,
-    "reason": "Explicacion personalizada de por que le gustaria"
+    "title": "Título exacto de la película/serie",
+    "year": 2024,
+    "director": "Nombre del director",
+    "reason": "Explicación personalizada de por qué le gustará",
+    "score": 90
   }
 ]
 
-Donde "index" es el numero del titulo en la lista (empezando en 1), "score" es tu confianza de 0-100 de que le gustara, y "reason" es la explicacion.
-
-Ordena de mayor a menor score. Responde SOLO con el JSON.`,
+Ordena de mayor a menor score. Responde SOLO con el JSON, sin texto adicional.`,
       },
     ],
   });
@@ -129,19 +78,5 @@ Ordena de mayor a menor score. Responde SOLO con el JSON.`,
     throw new Error("Unexpected response type from Claude");
   }
 
-  const parsed: { index: number; score: number; reason: string }[] = JSON.parse(
-    extractJSON(content.text)
-  );
-
-  return parsed
-    .map((item) => {
-      const title = availableTitles[item.index - 1];
-      if (!title) return null;
-      return {
-        title,
-        reason: item.reason,
-        score: item.score,
-      };
-    })
-    .filter((r): r is Recommendation => r !== null);
+  return JSON.parse(extractJSON(content.text)) as ClaudeRecommendation[];
 }
