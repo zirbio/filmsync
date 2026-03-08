@@ -2,11 +2,11 @@
 
 import { PlatformFilter } from "./PlatformFilter";
 import { GenreFilter } from "./GenreFilter";
+import { Loader2 } from "lucide-react";
 import type { RecommendationFilters } from "@/types";
 
 interface FiltersProps {
   filters: RecommendationFilters;
-  genres: string[];
   onChange: (filters: RecommendationFilters) => void;
   onGenerate: () => void;
   loading: boolean;
@@ -14,15 +14,14 @@ interface FiltersProps {
 
 export function Filters({
   filters,
-  genres,
   onChange,
   onGenerate,
   loading,
 }: FiltersProps) {
   return (
-    <div className="space-y-6 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
+    <div className="space-y-10 rounded-2xl bg-background-elevated px-6 py-10 md:px-10">
       <div>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+        <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
           Plataformas
         </h3>
         <PlatformFilter
@@ -32,88 +31,64 @@ export function Filters({
       </div>
 
       <div>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+        <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
           Tipo
         </h3>
-        <div className="flex gap-2">
-          {(["all", "movie", "tv"] as const).map((type) => (
+        <div className="inline-flex gap-1 rounded-full bg-background-subtle p-1">
+          {(["movie", "tv"] as const).map((type) => (
             <button
               key={type}
               onClick={() => onChange({ ...filters, type })}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+              className={`focus-ring rounded-full px-5 py-2 text-sm font-medium transition-all duration-200 ${
                 filters.type === type
-                  ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-                  : "bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300"
+                  ? "bg-foreground text-background"
+                  : "text-foreground-muted hover:text-foreground"
               }`}
             >
-              {type === "all"
-                ? "Todo"
-                : type === "movie"
-                  ? "Peliculas"
-                  : "Series"}
+              {type === "movie" ? "Películas" : "Series"}
             </button>
           ))}
         </div>
       </div>
 
       <div>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+        <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
           Generos
         </h3>
         <GenreFilter
-          genres={genres}
-          selected={filters.genres}
-          onChange={(g) => onChange({ ...filters, genres: g })}
+          selected={filters.genreCategories}
+          onChange={(g) => onChange({ ...filters, genreCategories: g })}
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="mb-2 block text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Anyo minimo
-          </label>
-          <input
-            type="number"
-            min={1950}
-            max={2026}
-            value={filters.minYear ?? ""}
-            onChange={(e) =>
-              onChange({
-                ...filters,
-                minYear: e.target.value ? parseInt(e.target.value) : null,
-              })
-            }
-            placeholder="Ej: 2010"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
-          />
-        </div>
-        <div>
-          <label className="mb-2 block text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Nota minima TMDB
-          </label>
-          <input
-            type="number"
-            min={0}
-            max={10}
-            step={0.5}
-            value={filters.minRating ?? ""}
-            onChange={(e) =>
-              onChange({
-                ...filters,
-                minRating: e.target.value ? parseFloat(e.target.value) : null,
-              })
-            }
-            placeholder="Ej: 7.0"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
-          />
-        </div>
+      <div>
+        <label className="mb-2 block text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
+          Anyo minimo
+        </label>
+        <input
+          type="number"
+          min={1950}
+          max={2026}
+          value={filters.minYear ?? ""}
+          onChange={(e) =>
+            onChange({
+              ...filters,
+              minYear: e.target.value ? parseInt(e.target.value) : null,
+            })
+          }
+          placeholder="Ej: 2010"
+          className="focus-ring w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm text-foreground placeholder:text-foreground-subtle transition-colors duration-200 hover:border-foreground-subtle sm:max-w-xs"
+        />
       </div>
 
       <button
         onClick={onGenerate}
         disabled={loading || filters.providers.length === 0}
-        className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-6 py-3 font-semibold text-white shadow-lg transition-all hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+        className="focus-ring inline-flex w-full items-center justify-center gap-2.5 rounded-full bg-primary px-8 py-3.5 font-semibold text-background transition-all duration-200 hover:bg-primary-hover hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none sm:w-auto"
       >
+        {loading && (
+          <Loader2 size={18} strokeWidth={1.5} className="animate-spin" />
+        )}
         {loading ? "Generando recomendaciones..." : "Generar recomendaciones"}
       </button>
     </div>

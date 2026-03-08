@@ -1,35 +1,38 @@
 "use client";
 
+import { GENRE_CATEGORIES } from "@/types";
+
 interface GenreFilterProps {
-  genres: string[];
   selected: string[];
-  onChange: (genres: string[]) => void;
+  onChange: (categories: string[]) => void;
 }
 
-export function GenreFilter({ genres, selected, onChange }: GenreFilterProps) {
-  const toggle = (genre: string) => {
-    if (selected.includes(genre)) {
-      onChange(selected.filter((g) => g !== genre));
+export function GenreFilter({ selected, onChange }: GenreFilterProps) {
+  const categories = Object.keys(GENRE_CATEGORIES);
+
+  const toggle = (category: string) => {
+    if (selected.includes(category)) {
+      onChange(selected.filter((c) => c !== category));
     } else {
-      onChange([...selected, genre]);
+      onChange([...selected, category]);
     }
   };
 
   return (
     <div className="flex flex-wrap gap-2">
-      {genres.map((genre) => {
-        const isSelected = selected.includes(genre);
+      {categories.map((category) => {
+        const isSelected = selected.includes(category);
         return (
           <button
-            key={genre}
-            onClick={() => toggle(genre)}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
+            key={category}
+            onClick={() => toggle(category)}
+            className={`focus-ring rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
               isSelected
-                ? "bg-amber-500 text-white"
-                : "bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300"
+                ? "bg-primary text-background"
+                : "bg-background-subtle text-foreground-muted hover:bg-border hover:text-foreground"
             }`}
           >
-            {genre}
+            {category}
           </button>
         );
       })}
