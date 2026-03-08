@@ -1,83 +1,101 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readCache, writeCache } from "@/lib/cache";
 import { generateRecommendations } from "@/lib/claude";
+import { verifyRecommendation } from "@/lib/tmdb";
+import { filterRatingsByCriteria } from "@/lib/rating-filter";
 import type {
-  TasteProfile,
-  StreamingTitle,
-  RecommendationCache,
+  EnrichedRating,
   RecommendationFilters,
+  RecommendationCache,
+  Recommendation,
 } from "@/types";
+import { STREAMING_PROVIDERS } from "@/types";
+
+function buildFilterHash(filters: RecommendationFilters): string {
+  const key = [
+    filters.type,
+    [...filters.genreCategories].sort().join(","),
+    filters.minYear ?? "any",
+    [...filters.providers].sort().join(","),
+  ].join("|");
+  // Simple hash
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    const char = key.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return hash.toString(36);
+}
+
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export async function POST(request: NextRequest) {
   try {
     const filters: RecommendationFilters = await request.json();
 
-    const profile = await readCache<TasteProfile>("taste_profile.json");
-    if (!profile) {
+    // Check cache first
+    const filterHash = buildFilterHash(filters);
+    const existingCache = await readCache<RecommendationCache>("recommendations_cache.json");
+    if (existingCache) {
+      const cacheAge = Date.now() - new Date(existingCache.generated_at).getTime();
+      const existingHash = buildFilterHash(existingCache.filters);
+      if (existingHash === filterHash && cacheAge < CACHE_TTL_MS) {
+        return NextResponse.json(existingCache);
+      }
+    }
+
+    // Read enriched ratings
+    const enriched = await readCache<EnrichedRating[]>("enriched_ratings.json");
+    if (!enriched || enriched.length === 0) {
       return NextResponse.json(
-        { error: "No taste profile. Run POST /api/profile first." },
+        { error: "No enriched data. Run POST /api/enrich first." },
         { status: 400 }
       );
     }
 
-    const catalog = await readCache<StreamingTitle[]>("streaming_catalog.json");
-    if (!catalog || catalog.length === 0) {
-      return NextResponse.json(
-        { error: "No streaming catalog. Run POST /api/streaming first." },
-        { status: 400 }
-      );
-    }
-
-    const watched = (await readCache<string[]>("watched.json")) ?? [];
-
-    let filtered = catalog.filter((t) => {
-      if (filters.type !== "all" && t.type !== filters.type) return false;
-      if (
-        filters.providers.length > 0 &&
-        !t.providers.some((p) => filters.providers.includes(p))
-      )
-        return false;
-      if (
-        filters.genres.length > 0 &&
-        !t.genres.some((g) =>
-          filters.genres.some(
-            (fg) => g.toLowerCase().includes(fg.toLowerCase())
-          )
-        )
-      )
-        return false;
-      if (filters.minYear && t.year < filters.minYear) return false;
-      if (filters.minRating && t.tmdbRating < filters.minRating) return false;
-      if (
-        filters.maxDuration &&
-        t.type === "movie" &&
-        t.runtime &&
-        t.runtime > filters.maxDuration
-      )
-        return false;
-      return true;
+    // Filter ratings by user criteria
+    const filtered = filterRatingsByCriteria(enriched, {
+      type: filters.type,
+      genreCategories: filters.genreCategories,
+      minYear: filters.minYear,
     });
 
-    filtered = filtered.filter(
-      (t) => !watched.includes(`${t.tmdbId}-${t.type}`)
-    );
-
-    filtered.sort((a, b) => b.tmdbRating - a.tmdbRating);
-    const forLLM = filtered.slice(0, 100);
-
-    if (forLLM.length === 0) {
-      return NextResponse.json({
-        recommendations: [],
-        message: "No hay titulos disponibles con estos filtros.",
-      });
+    if (filtered.length < 5) {
+      return NextResponse.json(
+        { error: "Muy pocas valoraciones con estos filtros. Prueba con otros géneros o un rango de años más amplio.", count: filtered.length },
+        { status: 400 }
+      );
     }
 
-    const watchedTitles = watched.map((w) => w.split("-")[0]);
-    const recommendations = await generateRecommendations(
-      profile,
-      forLLM,
-      watchedTitles
+    // Generate recommendations via Claude
+    const platformNames = filters.providers.map(
+      (p) => STREAMING_PROVIDERS[p].name
     );
+    const claudeRecs = await generateRecommendations(filtered, {
+      type: filters.type,
+      genreCategories: filters.genreCategories,
+      platforms: platformNames,
+    });
+
+    // Verify each recommendation against TMDB
+    const recommendations: Recommendation[] = [];
+    for (const rec of claudeRecs) {
+      const verified = await verifyRecommendation(
+        rec,
+        filters.type,
+        filters.providers
+      );
+      if (verified) {
+        recommendations.push({
+          title: verified,
+          reason: rec.reason,
+          score: rec.score,
+        });
+      }
+      // Throttle TMDB calls
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
 
     const cache: RecommendationCache = {
       filters,
