@@ -3,6 +3,8 @@ import type {
   TMDBTVShow,
   TMDBGenre,
   StreamingProviderKey,
+  ClaudeRecommendation,
+  StreamingTitle,
 } from "@/types";
 import { STREAMING_PROVIDERS } from "@/types";
 
@@ -141,4 +143,68 @@ export async function getWatchProviders(
 export function posterUrl(path: string | null, size: "w185" | "w342" | "w500" = "w342"): string | null {
   if (!path) return null;
   return `https://image.tmdb.org/t/p/${size}${path}`;
+}
+
+export async function verifyRecommendation(
+  rec: ClaudeRecommendation,
+  type: "movie" | "tv",
+  allowedProviders: StreamingProviderKey[]
+): Promise<StreamingTitle | null> {
+  // 1. Search TMDB
+  const searchResult = type === "movie"
+    ? await searchMovie(rec.title, rec.year)
+    : await searchTV(rec.title, rec.year);
+
+  if (!searchResult) return null;
+
+  // 2. Check streaming availability in Spain
+  const providers = await getWatchProviders(searchResult.id, type);
+  const matchingProviders = providers.filter((p) => allowedProviders.includes(p));
+  if (matchingProviders.length === 0) return null;
+
+  // 3. Get full details
+  const isMovie = type === "movie";
+  let directors: string[] = [];
+  let cast: string[] = [];
+  let runtime: number | null = null;
+  let genres: string[] = [];
+
+  if (isMovie) {
+    const details = await getMovieDetails(searchResult.id);
+    directors = details.credits?.crew
+      ?.filter((c) => c.job === "Director")
+      .map((c) => c.name) ?? [];
+    cast = details.credits?.cast?.slice(0, 5).map((c) => c.name) ?? [];
+    runtime = details.runtime ?? null;
+    genres = details.genres?.map((g) => g.name) ?? [];
+  } else {
+    const details = await getTVDetails(searchResult.id);
+    directors = details.credits?.crew
+      ?.filter((c) => c.job === "Executive Producer" || c.job === "Creator")
+      .slice(0, 3)
+      .map((c) => c.name) ?? [];
+    cast = details.credits?.cast?.slice(0, 5).map((c) => c.name) ?? [];
+    genres = details.genres?.map((g) => g.name) ?? [];
+  }
+
+  const title = "title" in searchResult ? searchResult.title : searchResult.name;
+  const year = parseInt(
+    ("release_date" in searchResult ? searchResult.release_date : searchResult.first_air_date)?.slice(0, 4) ?? "0",
+    10
+  );
+
+  return {
+    tmdbId: searchResult.id,
+    type,
+    title,
+    overview: searchResult.overview ?? "",
+    year,
+    genres,
+    directors,
+    cast,
+    tmdbRating: searchResult.vote_average ?? 0,
+    posterPath: searchResult.poster_path,
+    runtime,
+    providers: matchingProviders,
+  };
 }
