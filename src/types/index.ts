@@ -84,6 +84,17 @@ export const STREAMING_PROVIDERS = {
 
 export type StreamingProviderKey = keyof typeof STREAMING_PROVIDERS;
 
+export const GENRE_CATEGORIES: Record<string, string[]> = {
+  "Drama": ["Drama"],
+  "Comedia": ["Comedia"],
+  "Thriller / Crimen": ["Crimen", "Suspense", "Misterio"],
+  "Acción / Aventura": ["Acción", "Aventura"],
+  "Sci-Fi / Fantasía": ["Ciencia ficción", "Fantasía"],
+  "Histórico / Bélico": ["Historia", "Bélica"],
+  "Romance": ["Romance"],
+  "Animación": ["Animación"],
+} as const;
+
 export interface StreamingTitle {
   tmdbId: number;
   type: "movie" | "tv";
@@ -107,11 +118,17 @@ export interface Recommendation {
 
 export interface RecommendationFilters {
   providers: StreamingProviderKey[];
-  type: "movie" | "tv" | "all";
-  genres: string[];
+  type: "movie" | "tv";
+  genreCategories: string[];
   minYear: number | null;
-  minRating: number | null;
-  maxDuration: number | null;
+}
+
+export interface ClaudeRecommendation {
+  title: string;
+  year: number;
+  director: string;
+  reason: string;
+  score: number;
 }
 
 export interface RecommendationCache {
