@@ -157,35 +157,36 @@ export async function verifyRecommendation(
 
   if (!searchResult) return null;
 
-  // 2. Check streaming availability in Spain
-  const providers = await getWatchProviders(searchResult.id, type);
+  // 2. Check streaming availability and get details in parallel
+  const [providers, details] = await Promise.all([
+    getWatchProviders(searchResult.id, type),
+    type === "movie"
+      ? getMovieDetails(searchResult.id)
+      : getTVDetails(searchResult.id),
+  ]);
+
   const matchingProviders = providers.filter((p) => allowedProviders.includes(p));
   if (matchingProviders.length === 0) return null;
 
-  // 3. Get full details
-  const isMovie = type === "movie";
-  let directors: string[] = [];
-  let cast: string[] = [];
+  // 3. Extract metadata from details
+  let directors: string[];
   let runtime: number | null = null;
-  let genres: string[] = [];
 
-  if (isMovie) {
-    const details = await getMovieDetails(searchResult.id);
-    directors = details.credits?.crew
+  if (type === "movie") {
+    const movieDetails = details as TMDBMovie;
+    directors = movieDetails.credits?.crew
       ?.filter((c) => c.job === "Director")
       .map((c) => c.name) ?? [];
-    cast = details.credits?.cast?.slice(0, 5).map((c) => c.name) ?? [];
-    runtime = details.runtime ?? null;
-    genres = details.genres?.map((g) => g.name) ?? [];
+    runtime = movieDetails.runtime ?? null;
   } else {
-    const details = await getTVDetails(searchResult.id);
     directors = details.credits?.crew
       ?.filter((c) => c.job === "Executive Producer" || c.job === "Creator")
       .slice(0, 3)
       .map((c) => c.name) ?? [];
-    cast = details.credits?.cast?.slice(0, 5).map((c) => c.name) ?? [];
-    genres = details.genres?.map((g) => g.name) ?? [];
   }
+
+  const cast = details.credits?.cast?.slice(0, 5).map((c) => c.name) ?? [];
+  const genres = details.genres?.map((g) => g.name) ?? [];
 
   const title = "title" in searchResult ? searchResult.title : searchResult.name;
   const year = parseInt(

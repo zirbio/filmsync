@@ -8,39 +8,66 @@ import type {
   RecommendationFilters,
   RecommendationCache,
   Recommendation,
+  ClaudeRecommendation,
 } from "@/types";
 import { STREAMING_PROVIDERS } from "@/types";
 
-function buildFilterHash(filters: RecommendationFilters): string {
-  const key = [
+function buildFilterKey(filters: RecommendationFilters): string {
+  return [
     filters.type,
     [...filters.genreCategories].sort().join(","),
     filters.minYear ?? "any",
     [...filters.providers].sort().join(","),
   ].join("|");
-  // Simple hash
-  let hash = 0;
-  for (let i = 0; i < key.length; i++) {
-    const char = key.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash |= 0;
-  }
-  return hash.toString(36);
 }
 
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const TMDB_CONCURRENCY = 5;
+
+async function verifyInBatches(
+  recs: { rec: ClaudeRecommendation }[],
+  type: "movie" | "tv",
+  providers: RecommendationFilters["providers"]
+): Promise<(Recommendation | null)[]> {
+  const results: (Recommendation | null)[] = [];
+
+  for (let i = 0; i < recs.length; i += TMDB_CONCURRENCY) {
+    const batch = recs.slice(i, i + TMDB_CONCURRENCY);
+    const settled = await Promise.allSettled(
+      batch.map(({ rec }) => verifyRecommendation(rec, type, providers))
+    );
+
+    for (let j = 0; j < settled.length; j++) {
+      const result = settled[j];
+      const { rec } = batch[j];
+      if (result.status === "fulfilled" && result.value) {
+        results.push({ title: result.value, reason: rec.reason, score: rec.score });
+      } else {
+        results.push(null);
+      }
+    }
+
+    if (i + TMDB_CONCURRENCY < recs.length) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+
+  return results;
+}
 
 export async function POST(request: NextRequest) {
   try {
     const filters: RecommendationFilters = await request.json();
 
     // Check cache first
-    const filterHash = buildFilterHash(filters);
-    const existingCache = await readCache<RecommendationCache>("recommendations_cache.json");
+    const filterKey = buildFilterKey(filters);
+    const existingCache = await readCache<RecommendationCache & { filterKey?: string }>(
+      "recommendations_cache.json"
+    );
     if (existingCache) {
       const cacheAge = Date.now() - new Date(existingCache.generated_at).getTime();
-      const existingHash = buildFilterHash(existingCache.filters);
-      if (existingHash === filterHash && cacheAge < CACHE_TTL_MS) {
+      const existingKey = existingCache.filterKey ?? buildFilterKey(existingCache.filters);
+      if (existingKey === filterKey && cacheAge < CACHE_TTL_MS) {
         return NextResponse.json(existingCache);
       }
     }
@@ -78,26 +105,16 @@ export async function POST(request: NextRequest) {
       platforms: platformNames,
     });
 
-    // Verify each recommendation against TMDB
-    const recommendations: Recommendation[] = [];
-    for (const rec of claudeRecs) {
-      const verified = await verifyRecommendation(
-        rec,
-        filters.type,
-        filters.providers
-      );
-      if (verified) {
-        recommendations.push({
-          title: verified,
-          reason: rec.reason,
-          score: rec.score,
-        });
-      }
-      // Throttle TMDB calls
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
+    // Verify recommendations against TMDB (batched concurrency)
+    const verified = await verifyInBatches(
+      claudeRecs.map((rec) => ({ rec })),
+      filters.type,
+      filters.providers
+    );
+    const recommendations = verified.filter((r): r is Recommendation => r !== null);
 
-    const cache: RecommendationCache = {
+    const cache: RecommendationCache & { filterKey: string } = {
+      filterKey,
       filters,
       recommendations,
       generated_at: new Date().toISOString(),

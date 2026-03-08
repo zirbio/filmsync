@@ -1,16 +1,17 @@
 "use client";
 
 import { GENRE_CATEGORIES } from "@/types";
+import type { GenreCategory } from "@/types";
 
 interface GenreFilterProps {
-  selected: string[];
-  onChange: (categories: string[]) => void;
+  selected: GenreCategory[];
+  onChange: (categories: GenreCategory[]) => void;
 }
 
-export function GenreFilter({ selected = [], onChange }: GenreFilterProps) {
-  const categories = Object.keys(GENRE_CATEGORIES);
+const categories = Object.keys(GENRE_CATEGORIES) as GenreCategory[];
 
-  const toggle = (category: string) => {
+export function GenreFilter({ selected = [], onChange }: GenreFilterProps) {
+  const toggle = (category: GenreCategory) => {
     if (selected.includes(category)) {
       onChange(selected.filter((c) => c !== category));
     } else {

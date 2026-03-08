@@ -29,17 +29,19 @@ export default function Home() {
   useEffect(() => {
     async function checkSetup() {
       try {
-        const enrichRes = await fetch("/api/enrich");
-        if (enrichRes.ok) {
-          setAppState("ready");
-          const cacheRes = await fetch("/api/recommendations");
-          if (cacheRes.ok) {
-            const cache: RecommendationCache = await cacheRes.json();
-            setRecommendations(cache.recommendations);
-            setFilters(cache.filters);
-          }
-        } else {
+        const [enrichRes, cacheRes] = await Promise.all([
+          fetch("/api/enrich"),
+          fetch("/api/recommendations"),
+        ]);
+        if (!enrichRes.ok) {
           setAppState("setup");
+          return;
+        }
+        setAppState("ready");
+        if (cacheRes.ok) {
+          const cache: RecommendationCache = await cacheRes.json();
+          setRecommendations(cache.recommendations);
+          setFilters(cache.filters);
         }
       } catch {
         setAppState("setup");
