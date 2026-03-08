@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { Sparkles, AlertCircle, CheckCircle } from "lucide-react";
 
 interface SetupPanelProps {
   onComplete: () => void;
 }
 
-type SetupStep = "idle" | "enriching" | "profiling" | "done" | "error";
+type SetupStep = "idle" | "enriching" | "done" | "error";
 
 export function SetupPanel({ onComplete }: SetupPanelProps) {
   const [step, setStep] = useState<SetupStep>("idle");
@@ -19,18 +21,9 @@ export function SetupPanel({ onComplete }: SetupPanelProps) {
       const enrichRes = await fetch("/api/enrich", { method: "POST" });
       const enrichData = await enrichRes.json();
       if (!enrichRes.ok) throw new Error(enrichData.error);
-      setMessage(
-        `Enriquecidas ${enrichData.total} peliculas (${enrichData.notFound} no encontradas en TMDB).`
-      );
-
-      setStep("profiling");
-      setMessage("Generando tu perfil de gustos con IA...");
-      const profileRes = await fetch("/api/profile", { method: "POST" });
-      const profileData = await profileRes.json();
-      if (!profileRes.ok) throw new Error(profileData.error);
 
       setStep("done");
-      setMessage("Perfil generado correctamente.");
+      setMessage(`${enrichData.total} películas enriquecidas correctamente.`);
       setTimeout(onComplete, 1500);
     } catch (error) {
       setStep("error");
@@ -41,46 +34,89 @@ export function SetupPanel({ onComplete }: SetupPanelProps) {
   };
 
   return (
-    <div className="mx-auto max-w-lg rounded-xl bg-white p-8 text-center shadow-lg dark:bg-gray-900">
-      <h2 className="mb-4 text-2xl font-bold text-gray-900 dark:text-white">
+    <motion.div
+      className="mx-auto max-w-xl px-4 py-24 text-center"
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, ease: "easeOut" }}
+    >
+      <h2 className="font-display text-4xl tracking-tight text-foreground md:text-5xl">
         Configuracion inicial
       </h2>
-      <p className="mb-6 text-gray-600 dark:text-gray-400">
+      <p className="mx-auto mt-6 max-w-md text-lg leading-relaxed text-foreground-muted">
         Necesitamos enriquecer tus valoraciones de FilmAffinity con datos de
-        TMDB y generar tu perfil de gustos. Esto solo se hace una vez.
+        TMDB. Esto solo se hace una vez.
       </p>
 
-      {step === "idle" && (
-        <button
-          onClick={runSetup}
-          className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-8 py-3 font-semibold text-white shadow-lg transition-all hover:shadow-xl"
-        >
-          Iniciar configuracion
-        </button>
-      )}
+      <div className="mt-12">
+        <AnimatePresence mode="wait">
+          {step === "idle" && (
+            <motion.div
+              key="idle"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <button
+                onClick={runSetup}
+                className="focus-ring inline-flex items-center gap-2.5 rounded-full bg-primary px-8 py-3.5 font-semibold text-background transition-all duration-200 hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Sparkles size={18} strokeWidth={1.5} />
+                Iniciar configuracion
+              </button>
+            </motion.div>
+          )}
 
-      {(step === "enriching" || step === "profiling") && (
-        <div className="space-y-3">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
-          <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>
-        </div>
-      )}
+          {step === "enriching" && (
+            <motion.div
+              key="loading"
+              className="space-y-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <p className="text-foreground-muted">{message}</p>
+            </motion.div>
+          )}
 
-      {step === "done" && (
-        <p className="font-medium text-green-600">{message}</p>
-      )}
+          {step === "done" && (
+            <motion.div
+              key="done"
+              className="flex items-center justify-center gap-2 text-success"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
+              <CheckCircle size={20} strokeWidth={1.5} />
+              <span className="font-medium">{message}</span>
+            </motion.div>
+          )}
 
-      {step === "error" && (
-        <div className="space-y-3">
-          <p className="text-red-600">{message}</p>
-          <button
-            onClick={() => setStep("idle")}
-            className="rounded-lg bg-gray-200 px-4 py-2 text-sm dark:bg-gray-700"
-          >
-            Reintentar
-          </button>
-        </div>
-      )}
-    </div>
+          {step === "error" && (
+            <motion.div
+              key="error"
+              className="space-y-5"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="flex items-center justify-center gap-2 text-error">
+                <AlertCircle size={20} strokeWidth={1.5} />
+                <span>{message}</span>
+              </div>
+              <button
+                onClick={() => setStep("idle")}
+                className="focus-ring rounded-full bg-background-elevated px-5 py-2.5 text-sm font-medium text-foreground-muted transition-colors duration-200 hover:bg-background-subtle hover:text-foreground"
+              >
+                Reintentar
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
   );
 }
