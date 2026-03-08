@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Background layers — warm dark, never pure black */
+  --background: hsl(240 6% 7%);
+  --background-elevated: hsl(240 5% 10%);
+  --background-subtle: hsl(240 4% 13%);
+
+  /* Foreground — warm off-white, never pure white */
+  --foreground: hsl(40 10% 92%);
+  --foreground-muted: hsl(40 5% 55%);
+  --foreground-subtle: hsl(40 3% 38%);
+
+  /* Primary accent — warm gold, cinematic */
+  --primary: hsl(38 75% 55%);
+  --primary-hover: hsl(38 75% 62%);
+  --primary-muted: hsl(38 40% 25%);
+
+  /* Semantic */
+  --success: hsl(145 50% 46%);
+  --error: hsl(0 65% 55%);
+
+  /* Surfaces */
+  --card: hsl(240 5% 10%);
+  --card-hover: hsl(240 4% 13%);
+  --border: hsl(240 4% 16%);
+  --ring: hsl(38 75% 55% / 0.5);
+
+  /* Fonts */
+  --font-display: var(--font-instrument-serif);
+  --font-body: var(--font-geist-sans);
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-elevated: var(--background-elevated);
+  --color-background-subtle: var(--background-subtle);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-foreground-muted: var(--foreground-muted);
+  --color-foreground-subtle: var(--foreground-subtle);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-muted: var(--primary-muted);
+  --color-success: var(--success);
+  --color-error: var(--error);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body), system-ui;
+}
+
+/* Layered shadow system — never single shadow-lg */
+.shadow-elevated {
+  box-shadow:
+    0 1px 2px hsl(0 0% 0% / 0.12),
+    0 4px 8px hsl(0 0% 0% / 0.08),
+    0 12px 24px hsl(0 0% 0% / 0.06);
+}
+
+.shadow-elevated-hover {
+  box-shadow:
+    0 2px 4px hsl(0 0% 0% / 0.14),
+    0 8px 16px hsl(0 0% 0% / 0.1),
+    0 24px 48px hsl(0 0% 0% / 0.08);
+}
+
+/* Focus ring utility */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+
+/* Background depth — subtle radial gradient */
+.bg-depth {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, hsl(38 60% 15% / 0.15), transparent),
+    var(--background);
 }

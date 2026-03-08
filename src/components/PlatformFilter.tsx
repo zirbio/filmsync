@@ -7,14 +7,6 @@ interface PlatformFilterProps {
   onChange: (providers: StreamingProviderKey[]) => void;
 }
 
-const PROVIDER_COLORS: Record<StreamingProviderKey, string> = {
-  netflix: "bg-red-600",
-  hbo: "bg-purple-700",
-  prime: "bg-blue-500",
-  disney: "bg-blue-700",
-  apple: "bg-gray-800",
-};
-
 export function PlatformFilter({ selected, onChange }: PlatformFilterProps) {
   const toggle = (key: StreamingProviderKey) => {
     if (selected.includes(key)) {
@@ -34,10 +26,10 @@ export function PlatformFilter({ selected, onChange }: PlatformFilterProps) {
             <button
               key={key}
               onClick={() => toggle(key)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+              className={`focus-ring rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 ${
                 isSelected
-                  ? `${PROVIDER_COLORS[key]} text-white shadow-lg`
-                  : "bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300"
+                  ? "bg-foreground text-background"
+                  : "bg-background-subtle text-foreground-muted hover:bg-border hover:text-foreground"
               }`}
             >
               {provider.name}

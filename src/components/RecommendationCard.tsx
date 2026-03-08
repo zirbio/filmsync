@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import type { Recommendation, StreamingProviderKey } from "@/types";
+import { Eye } from "lucide-react";
+import type { Recommendation } from "@/types";
 import { STREAMING_PROVIDERS } from "@/types";
 
 interface RecommendationCardProps {
@@ -10,14 +11,6 @@ interface RecommendationCardProps {
   inWatchlist?: boolean;
 }
 
-const PROVIDER_COLORS: Record<StreamingProviderKey, string> = {
-  netflix: "bg-red-600",
-  hbo: "bg-purple-700",
-  prime: "bg-blue-500",
-  disney: "bg-blue-700",
-  apple: "bg-gray-800",
-};
-
 export function RecommendationCard({
   recommendation,
   onDismiss,
@@ -25,91 +18,98 @@ export function RecommendationCard({
 }: RecommendationCardProps) {
   const { title, reason, score } = recommendation;
   const posterUrl = title.posterPath
-    ? `https://image.tmdb.org/t/p/w342${title.posterPath}`
+    ? `https://image.tmdb.org/t/p/w500${title.posterPath}`
     : null;
 
   return (
-    <div className="group flex gap-4 rounded-xl bg-white p-4 shadow-sm transition-all hover:shadow-md dark:bg-gray-900">
-      <div className="h-48 w-32 flex-shrink-0 overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-700">
+    <article className="group">
+      <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-background-elevated transition-transform duration-300 group-hover:scale-[1.01]">
         {posterUrl ? (
           <Image
             src={posterUrl}
             alt={title.title}
-            width={128}
-            height={192}
-            className="h-full w-full object-cover"
+            fill
+            sizes="(max-width: 768px) 100vw, 50vw"
+            className="object-cover"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-gray-400">
+          <div className="flex h-full items-center justify-center text-foreground-subtle">
             Sin poster
           </div>
         )}
+
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent px-5 pb-5 pt-20">
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <span className="text-xs font-medium uppercase tracking-wider text-white/60">
+                {title.type === "movie" ? "Pelicula" : "Serie"}
+                {title.runtime ? ` · ${title.runtime} min` : ""}
+              </span>
+            </div>
+            <div className="flex-shrink-0 rounded-md bg-white/15 px-2 py-1 backdrop-blur-sm">
+              <span className="text-sm font-bold text-white">
+                {title.tmdbRating.toFixed(1)}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="flex flex-1 flex-col">
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-              {title.title}
-            </h3>
-            <p className="text-sm text-gray-500">
-              {title.year} &middot;{" "}
-              {title.type === "movie" ? "Pelicula" : "Serie"} &middot;{" "}
-              {title.directors.join(", ") || "Director desconocido"}
-              {title.runtime ? ` · ${title.runtime} min` : ""}
-            </p>
-          </div>
-          <div className="flex items-center gap-1 rounded-lg bg-amber-100 px-2 py-1 dark:bg-amber-900">
-            <span className="text-sm font-bold text-amber-700 dark:text-amber-300">
-              {title.tmdbRating.toFixed(1)}
-            </span>
-          </div>
+      <div className="mt-5 space-y-3">
+        <div>
+          <h3 className="font-display text-2xl tracking-tight text-foreground">
+            {title.title}
+          </h3>
+          <p className="mt-1 text-sm text-foreground-subtle">
+            {title.year} · {title.directors.join(", ") || "Director desconocido"}
+          </p>
         </div>
 
-        <div className="mt-2 flex flex-wrap gap-1">
-          {title.genres.slice(0, 4).map((genre) => (
-            <span
-              key={genre}
-              className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-            >
-              {genre}
-            </span>
-          ))}
-        </div>
-
-        <div className="mt-2 flex gap-1">
-          {title.providers.map((providerKey) => (
-            <span
-              key={providerKey}
-              className={`rounded-full px-2 py-0.5 text-xs font-medium text-white ${PROVIDER_COLORS[providerKey]}`}
-            >
-              {STREAMING_PROVIDERS[providerKey].name}
-            </span>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-foreground-subtle">
+            {title.genres.slice(0, 3).join(" · ")}
+          </span>
+          <span className="text-foreground-subtle/30">|</span>
+          <span className="text-xs text-foreground-subtle">
+            {title.providers
+              .map((key) => STREAMING_PROVIDERS[key].name)
+              .join(", ")}
+          </span>
         </div>
 
         {inWatchlist && (
-          <span className="mt-1 inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+          <span className="inline-block rounded-full bg-primary-muted px-2.5 py-0.5 text-xs font-medium text-primary">
             En tu watchlist
           </span>
         )}
 
-        <p className="mt-3 flex-1 text-sm italic text-gray-600 dark:text-gray-400">
-          &ldquo;{reason}&rdquo;
-        </p>
+        <blockquote className="border-l-2 border-primary/30 pl-4">
+          <p className="font-display text-base italic leading-relaxed text-foreground-muted">
+            &ldquo;{reason}&rdquo;
+          </p>
+        </blockquote>
 
-        <div className="mt-3 flex items-center justify-between">
-          <span className="text-xs text-gray-400">
-            Afinidad: {score}%
-          </span>
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center gap-2">
+            <div className="h-1 w-16 overflow-hidden rounded-full bg-background-subtle">
+              <div
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${score}%` }}
+              />
+            </div>
+            <span className="text-xs text-foreground-subtle">
+              {score}% afinidad
+            </span>
+          </div>
           <button
             onClick={() => onDismiss(title.tmdbId, title.type)}
-            className="rounded-lg px-3 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800"
+            className="focus-ring inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-foreground-subtle opacity-0 transition-all duration-200 hover:bg-background-elevated hover:text-foreground group-hover:opacity-100"
           >
+            <Eye size={14} strokeWidth={1.5} />
             Ya la vi
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

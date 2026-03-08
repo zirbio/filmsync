@@ -1,12 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { motion } from "motion/react";
+import {
+  RefreshCw,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Link as LinkIcon,
+  Star,
+} from "lucide-react";
 import type {
   SyncItem,
   SyncDiff,
   SyncResult,
   TraktWatchlistItem,
-  StreamingProviderKey,
 } from "@/types";
 import { STREAMING_PROVIDERS } from "@/types";
 
@@ -18,31 +26,11 @@ type SyncStatus =
   | "done"
   | "error";
 
-const PROVIDER_COLORS: Record<StreamingProviderKey, string> = {
-  netflix: "bg-red-600",
-  hbo: "bg-purple-700",
-  prime: "bg-blue-500",
-  disney: "bg-blue-700",
-  apple: "bg-gray-800",
-};
-
-function Spinner({ className = "" }: { className?: string }) {
-  return (
-    <div
-      className={`animate-spin rounded-full border-2 border-amber-500 border-t-transparent ${className}`}
-    />
-  );
-}
-
 function TypeBadge({ type }: { type: "movie" | "tv" | null }) {
   if (!type) return null;
   const label = type === "movie" ? "Pelicula" : "Serie";
-  const colors =
-    type === "movie"
-      ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
-      : "bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300";
   return (
-    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${colors}`}>
+    <span className="rounded-full bg-background-subtle px-2 py-0.5 text-xs font-medium text-foreground-muted">
       {label}
     </span>
   );
@@ -54,88 +42,67 @@ function StarRating({ rating10 }: { rating10: number }) {
   const hasHalf = stars - fullStars >= 0.5;
 
   return (
-    <span className="inline-flex items-center gap-0.5 text-amber-500">
+    <span className="inline-flex items-center gap-0.5 text-primary">
       {Array.from({ length: 5 }, (_, i) => {
         if (i < fullStars) {
           return (
-            <svg key={i} className="h-4 w-4 fill-current" viewBox="0 0 20 20">
-              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-            </svg>
+            <Star
+              key={i}
+              size={14}
+              strokeWidth={1.5}
+              className="fill-current"
+            />
           );
         }
         if (i === fullStars && hasHalf) {
           return (
-            <svg key={i} className="h-4 w-4" viewBox="0 0 20 20">
-              <defs>
-                <linearGradient id={`half-${i}`}>
-                  <stop offset="50%" stopColor="currentColor" />
-                  <stop offset="50%" stopColor="transparent" />
-                </linearGradient>
-              </defs>
-              <path
-                fill={`url(#half-${i})`}
-                stroke="currentColor"
-                strokeWidth="0.5"
-                d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
-              />
-            </svg>
+            <Star
+              key={i}
+              size={14}
+              strokeWidth={1.5}
+              className="fill-current opacity-50"
+            />
           );
         }
         return (
-          <svg
+          <Star
             key={i}
-            className="h-4 w-4 text-gray-300 dark:text-gray-600"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-          </svg>
+            size={14}
+            strokeWidth={1.5}
+            className="text-foreground-subtle"
+          />
         );
       })}
-      <span className="ml-1 text-xs text-gray-500">({rating10})</span>
+      <span className="ml-1 text-xs text-foreground-subtle">({rating10})</span>
     </span>
   );
 }
 
 function WatchlistItemCard({ item }: { item: TraktWatchlistItem }) {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-800/50">
+    <div className="flex items-start gap-3 rounded-lg bg-background-subtle p-3">
       <div className="flex-1">
         <div className="flex items-center gap-2">
-          <h4 className="font-medium text-gray-900 dark:text-white">
-            {item.title}
-          </h4>
-          <span className="text-sm text-gray-500">({item.year})</span>
+          <h4 className="font-medium text-foreground">{item.title}</h4>
+          <span className="text-sm text-foreground-subtle">({item.year})</span>
           <TypeBadge type={item.type} />
         </div>
         {item.genres.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {item.genres.slice(0, 3).map((genre) => (
-              <span
-                key={genre}
-                className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-400"
-              >
-                {genre}
-              </span>
-            ))}
-          </div>
+          <p className="mt-1.5 text-xs text-foreground-subtle">
+            {item.genres.slice(0, 3).join(" · ")}
+          </p>
         )}
         {item.providers.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {item.providers.map((providerKey) => (
-              <span
-                key={providerKey}
-                className={`rounded-full px-2 py-0.5 text-xs font-medium text-white ${PROVIDER_COLORS[providerKey]}`}
-              >
-                {STREAMING_PROVIDERS[providerKey].name}
-              </span>
-            ))}
-          </div>
+          <p className="mt-1 text-xs text-foreground-muted">
+            {item.providers
+              .map((key) => STREAMING_PROVIDERS[key].name)
+              .join(", ")}
+          </p>
         )}
       </div>
       {item.tmdbRating !== null && (
-        <div className="flex-shrink-0 rounded-lg bg-amber-100 px-2 py-1 dark:bg-amber-900">
-          <span className="text-sm font-bold text-amber-700 dark:text-amber-300">
+        <div className="flex-shrink-0 rounded-md bg-primary-muted px-2 py-1">
+          <span className="text-sm font-bold text-primary">
             {item.tmdbRating.toFixed(1)}
           </span>
         </div>
@@ -147,41 +114,41 @@ function WatchlistItemCard({ item }: { item: TraktWatchlistItem }) {
 function SyncDiffTable({ items }: { items: SyncItem[] }) {
   if (items.length === 0) {
     return (
-      <p className="py-4 text-center text-gray-500">
+      <p className="py-8 text-center text-foreground-subtle">
         No hay nuevas valoraciones para sincronizar.
       </p>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+    <div className="overflow-hidden rounded-lg border border-border">
       <table className="w-full text-left text-sm">
-        <thead className="bg-gray-50 dark:bg-gray-800">
+        <thead className="bg-background-subtle">
           <tr>
-            <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
               Titulo
             </th>
-            <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
               Ano
             </th>
-            <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
               Valoracion
             </th>
-            <th className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300">
+            <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
               Tipo
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+        <tbody className="divide-y divide-border">
           {items.map((item) => (
             <tr
               key={`${item.title}-${item.year}`}
-              className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              className="transition-colors duration-150 hover:bg-background-subtle"
             >
-              <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+              <td className="px-4 py-3 font-medium text-foreground">
                 {item.title}
               </td>
-              <td className="px-4 py-3 text-gray-500">{item.year}</td>
+              <td className="px-4 py-3 text-foreground-muted">{item.year}</td>
               <td className="px-4 py-3">
                 <StarRating rating10={item.rating10} />
               </td>
@@ -309,60 +276,72 @@ export default function SyncPage() {
   if (checkingConnection) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Spinner className="h-10 w-10 border-4" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <main className="mx-auto max-w-4xl p-6">
-      {/* Header */}
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+    <main className="mx-auto max-w-4xl px-4 py-16 md:px-8 md:py-24">
+      <motion.header
+        className="mb-16"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      >
+        <h1 className="font-display text-4xl tracking-tight text-foreground md:text-5xl">
           Sincronizacion FA &rarr; Trakt
         </h1>
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-4 text-lg text-foreground-muted">
           Sincroniza tus valoraciones de FilmAffinity con tu cuenta de Trakt
         </p>
-      </header>
+      </motion.header>
 
-      {/* Connection status */}
-      <section className="mb-6 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+      <motion.section
+        className="mb-10 rounded-2xl bg-background-elevated p-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+      >
+        <h2 className="mb-5 font-display text-xl text-foreground">
           Conexion con Trakt
         </h2>
         {connected ? (
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
-              <span className="h-2 w-2 rounded-full bg-green-500" />
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-success" />
+            <span className="text-sm font-medium text-success">
               Conectado a Trakt
             </span>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            <p className="text-sm text-gray-500">
+          <div className="space-y-4">
+            <p className="text-sm text-foreground-muted">
               Conecta tu cuenta de Trakt para sincronizar tus valoraciones.
             </p>
             <button
               onClick={handleConnect}
-              className="w-fit rounded-lg bg-amber-500 px-4 py-2 font-medium text-white transition-colors hover:bg-amber-600"
+              className="focus-ring inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 font-medium text-background transition-all duration-200 hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98]"
             >
+              <LinkIcon size={16} strokeWidth={1.5} />
               Conectar con Trakt
             </button>
           </div>
         )}
-      </section>
+      </motion.section>
 
-      {/* Sync section */}
       {connected && (
-        <section className="mb-6 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+        <motion.section
+          className="mb-10 rounded-2xl bg-background-elevated p-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+        >
+          <h2 className="mb-5 font-display text-xl text-foreground">
             Sincronizar valoraciones
           </h2>
 
-          {/* Last sync info */}
           {(lastSyncDate || totalSynced > 0) && (
-            <div className="mb-4 flex flex-wrap gap-4 text-sm text-gray-500">
+            <div className="mb-6 flex flex-wrap gap-4 text-sm text-foreground-muted">
               {lastSyncDate && (
                 <span>
                   Ultima sincronizacion:{" "}
@@ -381,33 +360,35 @@ export default function SyncPage() {
             </div>
           )}
 
-          {/* Idle state */}
           {syncStatus === "idle" && (
             <button
               onClick={handleSync}
-              className="rounded-lg bg-amber-500 px-4 py-2 font-medium text-white transition-colors hover:bg-amber-600"
+              className="focus-ring inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 font-medium text-background transition-all duration-200 hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98]"
             >
+              <RefreshCw size={16} strokeWidth={1.5} />
               Sincronizar con FilmAffinity
             </button>
           )}
 
-          {/* Scraping state */}
           {syncStatus === "scraping" && (
             <div className="flex items-center gap-3">
-              <Spinner className="h-5 w-5" />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
+              <Loader2
+                size={18}
+                strokeWidth={1.5}
+                className="animate-spin text-primary"
+              />
+              <span className="text-sm text-foreground-muted">
                 Obteniendo valoraciones de FilmAffinity...
               </span>
             </div>
           )}
 
-          {/* Diff ready state */}
           {syncStatus === "diff-ready" && syncDiff && (
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+            <div className="space-y-6">
+              <div className="flex flex-wrap gap-6 text-sm text-foreground-muted">
                 <span>Total en FilmAffinity: {syncDiff.totalFA}</span>
                 <span>Ya sincronizadas: {syncDiff.totalSynced}</span>
-                <span className="font-medium text-gray-900 dark:text-white">
+                <span className="font-medium text-foreground">
                   Nuevas: {syncDiff.newRatings.length}
                 </span>
               </div>
@@ -418,8 +399,9 @@ export default function SyncPage() {
                 <div className="flex gap-3">
                   <button
                     onClick={handleConfirm}
-                    className="rounded-lg bg-amber-500 px-4 py-2 font-medium text-white transition-colors hover:bg-amber-600"
+                    className="focus-ring inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 font-medium text-background transition-all duration-200 hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98]"
                   >
+                    <CheckCircle size={16} strokeWidth={1.5} />
                     Confirmar sincronizacion
                   </button>
                   <button
@@ -427,7 +409,7 @@ export default function SyncPage() {
                       setSyncStatus("idle");
                       setSyncDiff(null);
                     }}
-                    className="rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                    className="focus-ring rounded-full bg-background-subtle px-5 py-2.5 font-medium text-foreground-muted transition-colors duration-200 hover:bg-border hover:text-foreground"
                   >
                     Cancelar
                   </button>
@@ -437,7 +419,7 @@ export default function SyncPage() {
               {syncDiff.newRatings.length === 0 && (
                 <button
                   onClick={() => setSyncStatus("idle")}
-                  className="rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                  className="focus-ring rounded-full bg-background-subtle px-5 py-2.5 font-medium text-foreground-muted transition-colors duration-200 hover:bg-border hover:text-foreground"
                 >
                   Volver
                 </button>
@@ -445,28 +427,37 @@ export default function SyncPage() {
             </div>
           )}
 
-          {/* Confirming state */}
           {syncStatus === "confirming" && (
             <div className="flex items-center gap-3">
-              <Spinner className="h-5 w-5" />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
+              <Loader2
+                size={18}
+                strokeWidth={1.5}
+                className="animate-spin text-primary"
+              />
+              <span className="text-sm text-foreground-muted">
                 Sincronizando con Trakt...
               </span>
             </div>
           )}
 
-          {/* Done state */}
           {syncStatus === "done" && syncResult && (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/30">
-                <p className="font-medium text-green-800 dark:text-green-300">
-                  Sincronizacion completada
-                </p>
-                <p className="mt-1 text-sm text-green-700 dark:text-green-400">
-                  {syncResult.syncedCount} valoraciones sincronizadas
-                  {syncResult.removedFromWatchlist > 0 &&
-                    `, ${syncResult.removedFromWatchlist} quitadas de watchlist`}
-                </p>
+            <div className="space-y-5">
+              <div className="flex items-start gap-3 rounded-lg bg-background-subtle p-4">
+                <CheckCircle
+                  size={20}
+                  strokeWidth={1.5}
+                  className="mt-0.5 flex-shrink-0 text-success"
+                />
+                <div>
+                  <p className="font-medium text-foreground">
+                    Sincronizacion completada
+                  </p>
+                  <p className="mt-1 text-sm text-foreground-muted">
+                    {syncResult.syncedCount} valoraciones sincronizadas
+                    {syncResult.removedFromWatchlist > 0 &&
+                      `, ${syncResult.removedFromWatchlist} quitadas de watchlist`}
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => {
@@ -474,48 +465,54 @@ export default function SyncPage() {
                   setSyncDiff(null);
                   setSyncResult(null);
                 }}
-                className="rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                className="focus-ring rounded-full bg-background-subtle px-5 py-2.5 font-medium text-foreground-muted transition-colors duration-200 hover:bg-border hover:text-foreground"
               >
                 Volver al inicio
               </button>
             </div>
           )}
 
-          {/* Error state */}
           {syncStatus === "error" && error && (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/30">
-                <p className="font-medium text-red-800 dark:text-red-300">
-                  Error
-                </p>
-                <p className="mt-1 text-sm text-red-700 dark:text-red-400">
-                  {error}
-                </p>
+            <div className="space-y-5">
+              <div className="flex items-start gap-3 rounded-lg bg-error/10 p-4">
+                <AlertCircle
+                  size={20}
+                  strokeWidth={1.5}
+                  className="mt-0.5 flex-shrink-0 text-error"
+                />
+                <div>
+                  <p className="font-medium text-error">Error</p>
+                  <p className="mt-1 text-sm text-error/80">{error}</p>
+                </div>
               </div>
               <button
                 onClick={() => {
                   setError(null);
                   setSyncStatus("idle");
                 }}
-                className="rounded-lg bg-amber-500 px-4 py-2 font-medium text-white transition-colors hover:bg-amber-600"
+                className="focus-ring inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 font-medium text-background transition-all duration-200 hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98]"
               >
                 Reintentar
               </button>
             </div>
           )}
-        </section>
+        </motion.section>
       )}
 
-      {/* Watchlist section */}
       {connected && (
-        <section className="rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900">
-          <div className="mb-4 flex items-center justify-between">
+        <motion.section
+          className="rounded-2xl bg-background-elevated p-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
+        >
+          <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h2 className="font-display text-xl text-foreground">
                 Mi Watchlist de Trakt
               </h2>
               {watchlist && (
-                <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-sm font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                <span className="rounded-full bg-background-subtle px-2.5 py-0.5 text-sm font-medium text-foreground-muted">
                   {watchlistTotal}
                 </span>
               )}
@@ -523,33 +520,39 @@ export default function SyncPage() {
             <button
               onClick={fetchWatchlist}
               disabled={loadingWatchlist}
-              className="rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              className="focus-ring inline-flex items-center gap-2 rounded-full bg-background-subtle px-4 py-2 text-sm font-medium text-foreground-muted transition-colors duration-200 hover:bg-border hover:text-foreground disabled:opacity-40 disabled:pointer-events-none"
             >
               {loadingWatchlist ? (
-                <span className="flex items-center gap-2">
-                  <Spinner className="h-4 w-4" />
+                <>
+                  <Loader2
+                    size={14}
+                    strokeWidth={1.5}
+                    className="animate-spin"
+                  />
                   Cargando...
-                </span>
+                </>
               ) : (
-                "Actualizar watchlist"
+                <>
+                  <RefreshCw size={14} strokeWidth={1.5} />
+                  Actualizar watchlist
+                </>
               )}
             </button>
           </div>
 
           {!watchlist && !loadingWatchlist && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-foreground-muted">
               Pulsa &ldquo;Actualizar watchlist&rdquo; para cargar tu watchlist
               de Trakt.
             </p>
           )}
 
           {watchlist && (
-            <div className="space-y-6">
-              {/* Available */}
+            <div className="space-y-8">
               {watchlist.available.length > 0 && (
                 <div>
-                  <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
-                    <span className="h-2 w-2 rounded-full bg-green-500" />
+                  <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
+                    <span className="h-1.5 w-1.5 rounded-full bg-success" />
                     Disponibles ({watchlist.available.length})
                   </h3>
                   <div className="space-y-2">
@@ -563,11 +566,10 @@ export default function SyncPage() {
                 </div>
               )}
 
-              {/* Unavailable */}
               {watchlist.unavailable.length > 0 && (
                 <div>
-                  <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
-                    <span className="h-2 w-2 rounded-full bg-gray-400" />
+                  <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
+                    <span className="h-1.5 w-1.5 rounded-full bg-foreground-subtle" />
                     No disponibles ({watchlist.unavailable.length})
                   </h3>
                   <div className="space-y-2">
@@ -583,13 +585,13 @@ export default function SyncPage() {
 
               {watchlist.available.length === 0 &&
                 watchlist.unavailable.length === 0 && (
-                  <p className="py-4 text-center text-gray-500">
+                  <p className="py-8 text-center text-foreground-subtle">
                     Tu watchlist esta vacia.
                   </p>
                 )}
             </div>
           )}
-        </section>
+        </motion.section>
       )}
     </main>
   );
