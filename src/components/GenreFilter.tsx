@@ -7,7 +7,7 @@ interface GenreFilterProps {
   onChange: (categories: string[]) => void;
 }
 
-export function GenreFilter({ selected, onChange }: GenreFilterProps) {
+export function GenreFilter({ selected = [], onChange }: GenreFilterProps) {
   const categories = Object.keys(GENRE_CATEGORIES);
 
   const toggle = (category: string) => {
