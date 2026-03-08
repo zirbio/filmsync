@@ -46,6 +46,16 @@ data/taste_profile.json
 data/streaming_catalog.json
 data/recommendations_cache.json
 data/watched.json
+data/last_sync.json
+data/pending_sync.json
+data/trakt_token.json
+
+# User data CSVs
+filmaffinity_ratings_en.csv
+letterboxd_import.csv
 
 # Keep CSV tracked
 !data/filmaffinity_ratings.csv
+
+# Playwright MCP
+.playwright-mcp/
