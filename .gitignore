@@ -59,3 +59,4 @@ letterboxd_import.csv
 
 # Playwright MCP
 .playwright-mcp/
+.superpowers/
