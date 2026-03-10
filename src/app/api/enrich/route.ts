@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import { parseFilmAffinityCSV } from "@/lib/csv-parser";
-import { readCache, writeCache } from "@/lib/cache";
-import { enrichRating } from "@/lib/enrich";
+import { readCache } from "@/lib/cache";
+import { enrichBatch } from "@/lib/enrich";
 import type { EnrichedRating } from "@/types";
 import path from "path";
 
@@ -24,35 +24,12 @@ export async function POST(request: NextRequest) {
     }
 
     const ratings = await parseFilmAffinityCSV(csvPath);
-
-    const existing = await readCache<EnrichedRating[]>("enriched_ratings.json");
-    const enrichedTitles = new Set(existing?.map((r) => `${r.title}-${r.year}`) ?? []);
-
-    const toEnrich = ratings.filter(
-      (r) => !enrichedTitles.has(`${r.title}-${r.year}`)
-    );
-
-    const results: EnrichedRating[] = existing ?? [];
-    let processed = 0;
-
-    for (const rating of toEnrich) {
-      const enriched = await enrichRating(rating);
-      results.push(enriched);
-      processed++;
-
-      if (processed % 20 === 0) {
-        await writeCache("enriched_ratings.json", results);
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-
-    await writeCache("enriched_ratings.json", results);
+    const { results, newlyEnriched, notFound } = await enrichBatch(ratings);
 
     return NextResponse.json({
       total: results.length,
-      newlyEnriched: processed,
-      notFound: results.filter((r) => r.tmdbId === null).length,
+      newlyEnriched,
+      notFound,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -71,18 +48,19 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const full = searchParams.get("full") === "true";
+  const notFound = data.filter((r) => r.tmdbId === null).length;
 
   if (full) {
     return NextResponse.json({
       total: data.length,
-      notFound: data.filter((r) => r.tmdbId === null).length,
+      notFound,
       ratings: data,
     });
   }
 
   return NextResponse.json({
     total: data.length,
-    notFound: data.filter((r) => r.tmdbId === null).length,
+    notFound,
     sample: data.slice(0, 3),
   });
 }

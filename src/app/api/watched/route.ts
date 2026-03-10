@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readCache, writeCache } from "@/lib/cache";
-
-interface WatchedItem {
-  tmdbId: number;
-  type: "movie" | "tv";
-  title: string;
-  year: number;
-  posterPath: string | null;
-  genres: string[];
-  directors: string;
-  tmdbRating: number | null;
-}
+import type { WatchedItem } from "@/types";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();

@@ -4,17 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Undo2 } from "lucide-react";
 import { TitleCard } from "@/components/TitleCard";
-
-interface WatchedItem {
-  tmdbId: number;
-  type: "movie" | "tv";
-  title: string;
-  year: number;
-  posterPath: string | null;
-  genres: string[];
-  directors: string;
-  tmdbRating: number | null;
-}
+import type { WatchedItem } from "@/types";
 
 export function WatchedList() {
   const [items, setItems] = useState<WatchedItem[]>([]);

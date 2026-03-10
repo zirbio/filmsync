@@ -1,4 +1,5 @@
 import { searchMovie, searchTV, getMovieDetails, getTVDetails } from "@/lib/tmdb";
+import { readCache, writeCache } from "@/lib/cache";
 import type { EnrichedRating, FilmAffinityRating } from "@/types";
 
 export async function enrichRating(rating: FilmAffinityRating): Promise<EnrichedRating> {
@@ -47,5 +48,46 @@ export async function enrichRating(rating: FilmAffinityRating): Promise<Enriched
     cast: [],
     keywords: [],
     runtime: null,
+  };
+}
+
+/**
+ * Enrich a batch of ratings, skipping already-enriched titles.
+ * Saves checkpoint every 20 items and throttles 100ms between TMDB calls.
+ * Returns { results, newlyEnriched, notFound }.
+ */
+export async function enrichBatch(
+  newRatings: FilmAffinityRating[]
+): Promise<{ results: EnrichedRating[]; newlyEnriched: number; notFound: number }> {
+  const existing = await readCache<EnrichedRating[]>("enriched_ratings.json");
+  const enrichedTitles = new Set(
+    existing?.map((r) => `${r.title}-${r.year}`) ?? []
+  );
+
+  const toEnrich = newRatings.filter(
+    (r) => !enrichedTitles.has(`${r.title}-${r.year}`)
+  );
+
+  const results: EnrichedRating[] = existing ?? [];
+  let processed = 0;
+
+  for (const rating of toEnrich) {
+    const enriched = await enrichRating(rating);
+    results.push(enriched);
+    processed++;
+
+    if (processed % 20 === 0) {
+      await writeCache("enriched_ratings.json", results);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  await writeCache("enriched_ratings.json", results);
+
+  return {
+    results,
+    newlyEnriched: processed,
+    notFound: results.filter((r) => r.tmdbId === null).length,
   };
 }

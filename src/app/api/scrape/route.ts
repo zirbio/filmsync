@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { scrapeFilmAffinity, ScraperError } from "@/lib/fa-scraper";
-import { enrichRating } from "@/lib/enrich";
-import { readCache, writeCache } from "@/lib/cache";
-import type { EnrichedRating } from "@/types";
+import { enrichBatch } from "@/lib/enrich";
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,36 +23,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const existing = await readCache<EnrichedRating[]>("enriched_ratings.json");
-    const enrichedTitles = new Set(
-      existing?.map((r) => `${r.title}-${r.year}`) ?? []
-    );
-
-    const toEnrich = scraped.filter(
-      (r) => !enrichedTitles.has(`${r.title}-${r.year}`)
-    );
-
-    const results: EnrichedRating[] = existing ?? [];
-    let processed = 0;
-
-    for (const rating of toEnrich) {
-      const enriched = await enrichRating(rating);
-      results.push(enriched);
-      processed++;
-
-      if (processed % 20 === 0) {
-        await writeCache("enriched_ratings.json", results);
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-
-    await writeCache("enriched_ratings.json", results);
+    const { results, newlyEnriched, notFound } = await enrichBatch(scraped);
 
     return NextResponse.json({
       total: results.length,
-      newlyEnriched: processed,
-      notFound: results.filter((r) => r.tmdbId === null).length,
+      newlyEnriched,
+      notFound,
     });
   } catch (error) {
     if (error instanceof ScraperError) {
