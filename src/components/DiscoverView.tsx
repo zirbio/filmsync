@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
+import { Compass } from "lucide-react";
 import { Filters } from "@/components/Filters";
 import { RecommendationCard } from "@/components/RecommendationCard";
 import type {
@@ -121,6 +122,7 @@ export function DiscoverView({ hasData, onNeedImport }: DiscoverViewProps) {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.5 }}
           >
+            <Compass size={40} strokeWidth={1} className="mx-auto mb-4 text-foreground-subtle" />
             <p className="font-display text-2xl text-foreground-subtle md:text-3xl">
               Pulsa &ldquo;Generar recomendaciones&rdquo; para empezar
             </p>
@@ -128,7 +130,7 @@ export function DiscoverView({ hasData, onNeedImport }: DiscoverViewProps) {
         )}
 
         {loading && (
-          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="animate-pulse">
                 <div className="aspect-[2/3] rounded-lg bg-background-elevated" />
@@ -143,7 +145,7 @@ export function DiscoverView({ hasData, onNeedImport }: DiscoverViewProps) {
         )}
 
         {recommendations.length > 0 && !loading && (
-          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">
             {recommendations.map((rec) => (
               <motion.div
                 key={`${rec.title.tmdbId}-${rec.title.type}`}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion } from "motion/react";
 import { Upload, Search, Star } from "lucide-react";
 import { TitleCard } from "@/components/TitleCard";
@@ -17,8 +17,21 @@ export function CollectionGrid({ onImport }: CollectionGridProps) {
   const [ratings, setRatings] = useState<EnrichedRating[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search), 250);
+    return () => clearTimeout(debounceRef.current);
+  }, [search]);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [sortBy, setSortBy] = useState<SortKey>("rating");
+  const [visibleCount, setVisibleCount] = useState(48);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setVisibleCount(48);
+  }, [debouncedSearch, typeFilter, sortBy]);
 
   useEffect(() => {
     async function load() {
@@ -40,8 +53,8 @@ export function CollectionGrid({ onImport }: CollectionGridProps) {
   const filtered = useMemo(() => {
     let items = ratings.filter((r) => r.tmdbId !== null);
 
-    if (search) {
-      const q = search.toLowerCase();
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
       items = items.filter((r) => r.title.toLowerCase().includes(q));
     }
 
@@ -61,7 +74,7 @@ export function CollectionGrid({ onImport }: CollectionGridProps) {
     });
 
     return items;
-  }, [ratings, search, typeFilter, sortBy]);
+  }, [ratings, debouncedSearch, typeFilter, sortBy]);
 
   if (loading) {
     return (
@@ -93,7 +106,9 @@ export function CollectionGrid({ onImport }: CollectionGridProps) {
       {/* Header */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h2 className="font-display text-xl text-foreground">
-          {filtered.length} títulos importados
+          {debouncedSearch || typeFilter !== "all"
+            ? `${filtered.length} de ${ratings.filter((r) => r.tmdbId !== null).length} títulos`
+            : `${filtered.length} títulos importados`}
         </h2>
         <button
           onClick={onImport}
@@ -144,14 +159,15 @@ export function CollectionGrid({ onImport }: CollectionGridProps) {
 
       {/* Grid */}
       <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4">
-        {filtered.map((rating, index) => (
+        {filtered.slice(0, visibleCount).map((rating, index) => (
           <motion.div
-            key={`${rating.tmdbId}-${rating.tmdbType}`}
+            key={`${rating.tmdbId}-${rating.tmdbType}-${index}`}
             initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
             transition={{
               duration: 0.4,
-              delay: Math.min(index * 0.05, 0.4),
+              delay: Math.min((index % 48) * 0.03, 0.3),
               ease: "easeOut",
             }}
           >
@@ -172,6 +188,17 @@ export function CollectionGrid({ onImport }: CollectionGridProps) {
           </motion.div>
         ))}
       </div>
+
+      {visibleCount < filtered.length && (
+        <div className="mt-10 text-center">
+          <button
+            onClick={() => setVisibleCount((prev) => prev + 48)}
+            className="focus-ring inline-flex items-center gap-2 rounded-full bg-background-subtle px-6 py-2.5 text-sm font-medium text-foreground-muted transition-colors duration-200 hover:bg-border hover:text-foreground"
+          >
+            Cargar más ({filtered.length - visibleCount} restantes)
+          </button>
+        </div>
+      )}
     </div>
   );
 }

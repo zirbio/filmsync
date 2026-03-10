@@ -63,7 +63,7 @@ export function RecommendationCard({
         </div>
         <button
           onClick={() => onDismiss(title.tmdbId, title.type)}
-          className="focus-ring inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-foreground-subtle opacity-0 transition-all duration-200 hover:bg-background-elevated hover:text-foreground group-hover:opacity-100"
+          className="focus-ring inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-foreground-subtle opacity-100 transition-all duration-200 hover:bg-background-elevated hover:text-foreground md:opacity-0 md:group-hover:opacity-100"
         >
           <Eye size={14} strokeWidth={1.5} />
           Ya la vi

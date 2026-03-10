@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Undo2 } from "lucide-react";
+import { Undo2, Eye } from "lucide-react";
 import { TitleCard } from "@/components/TitleCard";
 import type { WatchedItem } from "@/types";
 
@@ -51,6 +51,7 @@ export function WatchedList() {
   if (items.length === 0) {
     return (
       <div className="py-24 text-center">
+        <Eye size={40} strokeWidth={1} className="mx-auto mb-4 text-foreground-subtle" />
         <p className="font-display text-xl text-foreground-subtle">
           Cuando descartes una recomendación con &ldquo;Ya la vi&rdquo;,
           aparecerá aquí

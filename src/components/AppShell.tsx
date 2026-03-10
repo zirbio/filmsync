@@ -65,6 +65,13 @@ export function AppShell({
         </div>
       </header>
 
+      {/* Mobile header */}
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 px-4 py-3 backdrop-blur-md md:hidden">
+        <h1 className="font-display text-lg tracking-tight text-foreground">
+          FilmSync
+        </h1>
+      </header>
+
       {/* Main content — both views always mounted */}
       <main className="mx-auto max-w-5xl px-4 py-8 md:px-8 md:py-16">
         <motion.div
@@ -91,7 +98,7 @@ export function AppShell({
 
       {/* Mobile bottom bar */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background-elevated md:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background-elevated pb-[env(safe-area-inset-bottom)] md:hidden"
         role="tablist"
       >
         <div className="flex">

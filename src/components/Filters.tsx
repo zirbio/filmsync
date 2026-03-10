@@ -19,7 +19,7 @@ export function Filters({
   loading,
 }: FiltersProps) {
   return (
-    <div className="space-y-10 rounded-2xl bg-background-elevated px-6 py-10 md:px-10">
+    <div className="mx-auto max-w-2xl space-y-10 rounded-2xl bg-background-elevated px-6 py-10 md:px-10">
       <div>
         <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
           Plataformas
@@ -53,7 +53,7 @@ export function Filters({
 
       <div>
         <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
-          Generos
+          Géneros
         </h3>
         <GenreFilter
           selected={filters.genreCategories}
@@ -63,7 +63,7 @@ export function Filters({
 
       <div>
         <label className="mb-2 block text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
-          Anyo minimo
+          Año mínimo
         </label>
         <input
           type="number"

@@ -31,7 +31,7 @@ export function TitleCard({
 
   return (
     <article className="group">
-      <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-background-elevated transition-transform duration-200 group-hover:scale-[1.02]">
+      <div className="shadow-elevated relative aspect-[2/3] overflow-hidden rounded-lg bg-background-elevated transition-all duration-200 group-hover:scale-[1.02] group-hover:shadow-elevated-hover">
         {posterUrl ? (
           <Image
             src={posterUrl}
