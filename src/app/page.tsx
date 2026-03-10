@@ -110,7 +110,7 @@ export default function Home() {
         transition={{ duration: 0.6, ease: "easeOut" }}
       >
         <h1 className="font-display text-5xl tracking-tight text-foreground md:text-6xl lg:text-7xl">
-          Mi Recomendador
+          FilmSync
         </h1>
       </motion.header>
 
