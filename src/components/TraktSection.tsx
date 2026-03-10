@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "motion/react";
 import {
   RefreshCw,
   CheckCircle,
@@ -28,7 +27,7 @@ type SyncStatus =
 
 function TypeBadge({ type }: { type: "movie" | "tv" | null }) {
   if (!type) return null;
-  const label = type === "movie" ? "Pelicula" : "Serie";
+  const label = type === "movie" ? "Película" : "Serie";
   return (
     <span className="rounded-full bg-background-subtle px-2 py-0.5 text-xs font-medium text-foreground-muted">
       {label}
@@ -89,7 +88,7 @@ function WatchlistItemCard({ item }: { item: TraktWatchlistItem }) {
         </div>
         {item.genres.length > 0 && (
           <p className="mt-1.5 text-xs text-foreground-subtle">
-            {item.genres.slice(0, 3).join(" · ")}
+            {item.genres.slice(0, 3).join(" \u00B7 ")}
           </p>
         )}
         {item.providers.length > 0 && (
@@ -126,13 +125,13 @@ function SyncDiffTable({ items }: { items: SyncItem[] }) {
         <thead className="bg-background-subtle">
           <tr>
             <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
-              Titulo
+              Título
             </th>
             <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
-              Ano
+              Año
             </th>
             <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
-              Valoracion
+              Valoración
             </th>
             <th className="px-4 py-3 text-xs font-semibold uppercase tracking-widest text-foreground-subtle">
               Tipo
@@ -163,7 +162,7 @@ function SyncDiffTable({ items }: { items: SyncItem[] }) {
   );
 }
 
-export default function SyncPage() {
+export function TraktSection() {
   const [connected, setConnected] = useState(false);
   const [checkingConnection, setCheckingConnection] = useState(true);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
@@ -233,7 +232,7 @@ export default function SyncPage() {
       const res = await fetch("/api/sync/confirm", { method: "POST" });
       if (!res.ok) {
         const errorData: { error?: string } = await res.json();
-        throw new Error(errorData.error ?? "Error al confirmar sincronizacion");
+        throw new Error(errorData.error ?? "Error al confirmar sincronización");
       }
 
       const result: SyncResult = await res.json();
@@ -275,36 +274,17 @@ export default function SyncPage() {
 
   if (checkingConnection) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-24">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-16 md:px-8 md:py-24">
-      <motion.header
-        className="mb-16"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-      >
-        <h1 className="font-display text-4xl tracking-tight text-foreground md:text-5xl">
-          Sincronizacion FA &rarr; Trakt
-        </h1>
-        <p className="mt-4 text-lg text-foreground-muted">
-          Sincroniza tus valoraciones de FilmAffinity con tu cuenta de Trakt
-        </p>
-      </motion.header>
-
-      <motion.section
-        className="mb-10 rounded-2xl bg-background-elevated p-8"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
-      >
+    <>
+      <section className="mb-10 rounded-2xl bg-background-elevated p-8">
         <h2 className="mb-5 font-display text-xl text-foreground">
-          Conexion con Trakt
+          Conexión con Trakt
         </h2>
         {connected ? (
           <div className="flex items-center gap-2">
@@ -327,15 +307,10 @@ export default function SyncPage() {
             </button>
           </div>
         )}
-      </motion.section>
+      </section>
 
       {connected && (
-        <motion.section
-          className="mb-10 rounded-2xl bg-background-elevated p-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-        >
+        <section className="mb-10 rounded-2xl bg-background-elevated p-8">
           <h2 className="mb-5 font-display text-xl text-foreground">
             Sincronizar valoraciones
           </h2>
@@ -344,7 +319,7 @@ export default function SyncPage() {
             <div className="mb-6 flex flex-wrap gap-4 text-sm text-foreground-muted">
               {lastSyncDate && (
                 <span>
-                  Ultima sincronizacion:{" "}
+                  Última sincronización:{" "}
                   {new Date(lastSyncDate).toLocaleDateString("es-ES", {
                     day: "numeric",
                     month: "long",
@@ -402,7 +377,7 @@ export default function SyncPage() {
                     className="focus-ring inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 font-medium text-background transition-all duration-200 hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98]"
                   >
                     <CheckCircle size={16} strokeWidth={1.5} />
-                    Confirmar sincronizacion
+                    Confirmar sincronización
                   </button>
                   <button
                     onClick={() => {
@@ -450,7 +425,7 @@ export default function SyncPage() {
                 />
                 <div>
                   <p className="font-medium text-foreground">
-                    Sincronizacion completada
+                    Sincronización completada
                   </p>
                   <p className="mt-1 text-sm text-foreground-muted">
                     {syncResult.syncedCount} valoraciones sincronizadas
@@ -496,16 +471,11 @@ export default function SyncPage() {
               </button>
             </div>
           )}
-        </motion.section>
+        </section>
       )}
 
       {connected && (
-        <motion.section
-          className="rounded-2xl bg-background-elevated p-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
-        >
+        <section className="rounded-2xl bg-background-elevated p-8">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <h2 className="font-display text-xl text-foreground">
@@ -586,13 +556,13 @@ export default function SyncPage() {
               {watchlist.available.length === 0 &&
                 watchlist.unavailable.length === 0 && (
                   <p className="py-8 text-center text-foreground-subtle">
-                    Tu watchlist esta vacia.
+                    Tu watchlist está vacía.
                   </p>
                 )}
             </div>
           )}
-        </motion.section>
+        </section>
       )}
-    </main>
+    </>
   );
 }

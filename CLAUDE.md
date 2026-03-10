@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Personalized movie/series recommendation app. Users import their FilmAffinity ratings (CSV), the system enriches them via TMDB API, then Claude AI recommends titles available on Spanish streaming platforms (Netflix, Max/HBO, Prime Video, Disney+, Apple TV+). Optionally syncs ratings to Trakt.tv.
+**FilmSync** — Personalized movie/series recommendation app. Users import their FilmAffinity ratings (CSV), the system enriches them via TMDB API, then Claude AI recommends titles available on Spanish streaming platforms (Netflix, Max/HBO, Prime Video, Disney+, Apple TV+). Optionally syncs ratings to Trakt.tv.
 
 ## Commands
 

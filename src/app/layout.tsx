@@ -17,9 +17,9 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Mi Recomendador de Peliculas",
+  title: "FilmSync",
   description:
-    "Recomendaciones personalizadas basadas en tus gustos de FilmAffinity",
+    "Sync your FilmAffinity ratings, get AI-powered recommendations, and export to Trakt.tv",
 };
 
 export default function RootLayout({
@@ -29,6 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+      </head>
       <body
         className={`${geistSans.variable} ${instrumentSerif.variable} bg-depth antialiased`}
       >

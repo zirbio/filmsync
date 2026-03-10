@@ -165,6 +165,17 @@ export interface LastSync {
   lastSyncDate: string;
 }
 
+export interface WatchedItem {
+  tmdbId: number;
+  type: "movie" | "tv";
+  title: string;
+  year: number;
+  posterPath: string | null;
+  genres: string[];
+  directors: string;
+  tmdbRating: number | null;
+}
+
 export interface TraktWatchlistItem {
   title: string;
   year: number;
