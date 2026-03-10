@@ -62,25 +62,39 @@ export function DiscoverView({ hasData, onNeedImport }: DiscoverViewProps) {
     }
   }, [filters]);
 
+  const [dismissing, setDismissing] = useState<Set<number>>(new Set());
+
   const dismissTitle = async (tmdbId: number, type: "movie" | "tv") => {
+    if (dismissing.has(tmdbId)) return;
     const rec = recommendations.find((r) => r.title.tmdbId === tmdbId);
-    await fetch("/api/watched", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tmdbId,
-        type,
-        title: rec?.title.title,
-        year: rec?.title.year,
-        posterPath: rec?.title.posterPath,
-        genres: rec?.title.genres,
-        directors: rec?.title.directors.join(", "),
-        tmdbRating: rec?.title.tmdbRating,
-      }),
-    });
-    setRecommendations((prev) =>
-      prev.filter((r) => r.title.tmdbId !== tmdbId)
-    );
+    if (!rec) return;
+
+    setDismissing((prev) => new Set(prev).add(tmdbId));
+    try {
+      await fetch("/api/watched", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tmdbId,
+          type,
+          title: rec.title.title,
+          year: rec.title.year,
+          posterPath: rec.title.posterPath,
+          genres: rec.title.genres,
+          directors: rec.title.directors.join(", "),
+          tmdbRating: rec.title.tmdbRating,
+        }),
+      });
+      setRecommendations((prev) =>
+        prev.filter((r) => r.title.tmdbId !== tmdbId)
+      );
+    } finally {
+      setDismissing((prev) => {
+        const next = new Set(prev);
+        next.delete(tmdbId);
+        return next;
+      });
+    }
   };
 
   if (!hasData) {

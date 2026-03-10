@@ -17,10 +17,7 @@ export async function POST(request: NextRequest) {
     const scraped = await scrapeFilmAffinity(userId);
 
     if (scraped.length === 0) {
-      return NextResponse.json(
-        { error: "User not found on FilmAffinity" },
-        { status: 404 }
-      );
+      return NextResponse.json({ total: 0, newlyEnriched: 0, notFound: 0 });
     }
 
     const { results, newlyEnriched, notFound } = await enrichBatch(scraped);

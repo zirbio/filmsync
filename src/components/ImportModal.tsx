@@ -161,8 +161,6 @@ export function ImportModal({ open, onClose, onComplete }: ImportModalProps) {
     if (file) handleFile(file);
   };
 
-  if (!open) return null;
-
   return (
     <AnimatePresence>
       {open && (
@@ -196,6 +194,7 @@ export function ImportModal({ open, onClose, onComplete }: ImportModalProps) {
               </h2>
               <button
                 onClick={handleClose}
+                aria-label="Cerrar"
                 className="focus-ring rounded-lg p-2 text-foreground-muted transition-colors duration-200 hover:bg-background-subtle hover:text-foreground"
               >
                 <X size={20} strokeWidth={1.5} />
