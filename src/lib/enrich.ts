@@ -54,7 +54,7 @@ export async function enrichRating(rating: FilmAffinityRating): Promise<Enriched
 /**
  * Enrich a batch of ratings, skipping already-enriched titles.
  * Saves checkpoint every 20 items and throttles 100ms between TMDB calls.
- * Returns { results, newlyEnriched, notFound }.
+ * Returns { results, newlyEnriched, updated, notFound }.
  */
 export async function enrichBatch(
   newRatings: FilmAffinityRating[]
@@ -71,17 +71,15 @@ export async function enrichBatch(
     const key = `${rating.title}-${rating.year}`;
     const cached = enrichedMap.get(key);
     if (cached) {
-      let changed = false;
-      if (cached.rating10 !== rating.rating10) {
-        cached.rating10 = rating.rating10;
-        cached.rating = rating.rating;
-        changed = true;
+      if (cached.rating10 !== rating.rating10 || cached.watchedDate !== rating.watchedDate) {
+        enrichedMap.set(key, {
+          ...cached,
+          rating10: rating.rating10,
+          rating: rating.rating,
+          watchedDate: rating.watchedDate,
+        });
+        updated++;
       }
-      if (cached.watchedDate !== rating.watchedDate) {
-        cached.watchedDate = rating.watchedDate;
-        changed = true;
-      }
-      if (changed) updated++;
     } else {
       toEnrich.push(rating);
     }

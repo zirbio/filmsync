@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const scraped = await scrapeFilmAffinity(userId);
 
     if (scraped.length === 0) {
-      return NextResponse.json({ total: 0, newlyEnriched: 0, notFound: 0 });
+      return NextResponse.json({ total: 0, newlyEnriched: 0, updated: 0, notFound: 0 });
     }
 
     const { results, newlyEnriched, updated, notFound } = await enrichBatch(scraped);

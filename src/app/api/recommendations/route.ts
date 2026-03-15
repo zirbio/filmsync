@@ -77,9 +77,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Build enriched data fingerprint (count + sum of ratings detects both additions and updates)
+    const enrichedFingerprint = `${enriched.length}:${enriched.reduce((sum, r) => sum + r.rating10, 0)}`;
+
     // Check cache — invalidate if filters, watched set, or enriched data changed
     const existingCache = await readCache<
-      RecommendationCache & { filterKey?: string; watchedHash?: string; enrichedCount?: number }
+      RecommendationCache & { filterKey?: string; watchedHash?: string; enrichedFingerprint?: string }
     >("recommendations_cache.json");
     if (existingCache) {
       const cacheAge = Date.now() - new Date(existingCache.generated_at).getTime();
@@ -87,7 +90,7 @@ export async function POST(request: NextRequest) {
       if (
         existingKey === filterKey &&
         (existingCache.watchedHash ?? "") === watchedHash &&
-        (existingCache.enrichedCount ?? 0) === enriched.length &&
+        (existingCache.enrichedFingerprint ?? "") === enrichedFingerprint &&
         cacheAge < CACHE_TTL_MS
       ) {
         return NextResponse.json(existingCache);
@@ -132,10 +135,10 @@ export async function POST(request: NextRequest) {
       .filter((r): r is Recommendation => r !== null)
       .filter((r) => !watchedTmdbIds.has(r.title.tmdbId));
 
-    const cache: RecommendationCache & { filterKey: string; watchedHash: string; enrichedCount: number } = {
+    const cache: RecommendationCache & { filterKey: string; watchedHash: string; enrichedFingerprint: string } = {
       filterKey,
       watchedHash,
-      enrichedCount: enriched.length,
+      enrichedFingerprint,
       filters,
       recommendations,
       generated_at: new Date().toISOString(),
