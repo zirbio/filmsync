@@ -21,9 +21,10 @@ const DEFAULT_FILTERS: RecommendationFilters = {
 interface DiscoverViewProps {
   hasData: boolean;
   onNeedImport: () => void;
+  refreshKey: number;
 }
 
-export function DiscoverView({ hasData, onNeedImport }: DiscoverViewProps) {
+export function DiscoverView({ hasData, onNeedImport, refreshKey }: DiscoverViewProps) {
   const [filters, setFilters] =
     useState<RecommendationFilters>(DEFAULT_FILTERS);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -42,8 +43,11 @@ export function DiscoverView({ hasData, onNeedImport }: DiscoverViewProps) {
         // No cached data
       }
     }
-    if (hasData) loadCache();
-  }, [hasData]);
+    if (hasData) {
+      if (refreshKey > 0) setRecommendations([]);
+      loadCache();
+    }
+  }, [hasData, refreshKey]);
 
   const generateRecommendations = useCallback(async () => {
     setLoading(true);

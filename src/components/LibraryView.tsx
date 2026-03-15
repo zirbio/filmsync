@@ -10,9 +10,10 @@ type LibraryTab = "collection" | "watched" | "trakt";
 
 interface LibraryViewProps {
   onImport: () => void;
+  refreshKey: number;
 }
 
-export function LibraryView({ onImport }: LibraryViewProps) {
+export function LibraryView({ onImport, refreshKey }: LibraryViewProps) {
   const [activeSection, setActiveSection] =
     useState<LibraryTab>("collection");
 
@@ -54,9 +55,9 @@ export function LibraryView({ onImport }: LibraryViewProps) {
 
       {/* Content */}
       {activeSection === "collection" && (
-        <CollectionGrid onImport={onImport} />
+        <CollectionGrid onImport={onImport} refreshKey={refreshKey} />
       )}
-      {activeSection === "watched" && <WatchedList />}
+      {activeSection === "watched" && <WatchedList refreshKey={refreshKey} />}
       {activeSection === "trakt" && <TraktSection />}
     </div>
   );

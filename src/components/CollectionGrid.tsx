@@ -8,12 +8,13 @@ import type { EnrichedRating } from "@/types";
 
 interface CollectionGridProps {
   onImport: () => void;
+  refreshKey: number;
 }
 
 type SortKey = "rating" | "watchedDate" | "year";
 type TypeFilter = "all" | "movie" | "tv";
 
-export function CollectionGrid({ onImport }: CollectionGridProps) {
+export function CollectionGrid({ onImport, refreshKey }: CollectionGridProps) {
   const [ratings, setRatings] = useState<EnrichedRating[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -35,6 +36,7 @@ export function CollectionGrid({ onImport }: CollectionGridProps) {
 
   useEffect(() => {
     async function load() {
+      setLoading(true);
       try {
         const res = await fetch("/api/enrich?full=true");
         if (res.ok) {
@@ -48,7 +50,7 @@ export function CollectionGrid({ onImport }: CollectionGridProps) {
       }
     }
     load();
-  }, []);
+  }, [refreshKey]);
 
   const filtered = useMemo(() => {
     let items = ratings.filter((r) => r.tmdbId !== null);
