@@ -87,11 +87,13 @@ export async function enrichBatch(
 
   const results: EnrichedRating[] = [...enrichedMap.values()];
   let processed = 0;
+  let notFound = 0;
 
   for (const rating of toEnrich) {
     const enriched = await enrichRating(rating);
     results.push(enriched);
     processed++;
+    if (enriched.tmdbId === null) notFound++;
 
     if (processed % 20 === 0) {
       await writeCache("enriched_ratings.json", results);
@@ -106,6 +108,6 @@ export async function enrichBatch(
     results,
     newlyEnriched: processed,
     updated,
-    notFound: results.filter((r) => r.tmdbId === null).length,
+    notFound,
   };
 }

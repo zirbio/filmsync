@@ -44,8 +44,12 @@ export function DiscoverView({ hasData, onNeedImport, refreshKey }: DiscoverView
       }
     }
     if (hasData) {
-      if (refreshKey > 0) setRecommendations([]);
-      loadCache();
+      if (refreshKey > 0) {
+        // After import, clear stale recs — user must click "Generar" for fresh ones
+        setRecommendations([]);
+      } else {
+        loadCache();
+      }
     }
   }, [hasData, refreshKey]);
 
