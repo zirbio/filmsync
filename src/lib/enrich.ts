@@ -58,17 +58,36 @@ export async function enrichRating(rating: FilmAffinityRating): Promise<Enriched
  */
 export async function enrichBatch(
   newRatings: FilmAffinityRating[]
-): Promise<{ results: EnrichedRating[]; newlyEnriched: number; notFound: number }> {
+): Promise<{ results: EnrichedRating[]; newlyEnriched: number; updated: number; notFound: number }> {
   const existing = await readCache<EnrichedRating[]>("enriched_ratings.json");
-  const enrichedTitles = new Set(
-    existing?.map((r) => `${r.title}-${r.year}`) ?? []
+  const enrichedMap = new Map<string, EnrichedRating>(
+    existing?.map((r) => [`${r.title}-${r.year}`, r]) ?? []
   );
 
-  const toEnrich = newRatings.filter(
-    (r) => !enrichedTitles.has(`${r.title}-${r.year}`)
-  );
+  const toEnrich: FilmAffinityRating[] = [];
+  let updated = 0;
 
-  const results: EnrichedRating[] = existing ?? [];
+  for (const rating of newRatings) {
+    const key = `${rating.title}-${rating.year}`;
+    const cached = enrichedMap.get(key);
+    if (cached) {
+      let changed = false;
+      if (cached.rating10 !== rating.rating10) {
+        cached.rating10 = rating.rating10;
+        cached.rating = rating.rating;
+        changed = true;
+      }
+      if (cached.watchedDate !== rating.watchedDate) {
+        cached.watchedDate = rating.watchedDate;
+        changed = true;
+      }
+      if (changed) updated++;
+    } else {
+      toEnrich.push(rating);
+    }
+  }
+
+  const results: EnrichedRating[] = [...enrichedMap.values()];
   let processed = 0;
 
   for (const rating of toEnrich) {
@@ -88,6 +107,7 @@ export async function enrichBatch(
   return {
     results,
     newlyEnriched: processed,
+    updated,
     notFound: results.filter((r) => r.tmdbId === null).length,
   };
 }

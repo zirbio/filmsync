@@ -20,11 +20,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ total: 0, newlyEnriched: 0, notFound: 0 });
     }
 
-    const { results, newlyEnriched, notFound } = await enrichBatch(scraped);
+    const { results, newlyEnriched, updated, notFound } = await enrichBatch(scraped);
 
     return NextResponse.json({
       total: results.length,
       newlyEnriched,
+      updated,
       notFound,
     });
   } catch (error) {

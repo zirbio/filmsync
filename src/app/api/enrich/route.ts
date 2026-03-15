@@ -24,11 +24,12 @@ export async function POST(request: NextRequest) {
     }
 
     const ratings = await parseFilmAffinityCSV(csvPath);
-    const { results, newlyEnriched, notFound } = await enrichBatch(ratings);
+    const { results, newlyEnriched, updated, notFound } = await enrichBatch(ratings);
 
     return NextResponse.json({
       total: results.length,
       newlyEnriched,
+      updated,
       notFound,
     });
   } catch (error) {
