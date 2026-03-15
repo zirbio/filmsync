@@ -9,6 +9,7 @@ import type {
   RecommendationCache,
   Recommendation,
   ClaudeRecommendation,
+  WatchedItem,
 } from "@/types";
 import { STREAMING_PROVIDERS } from "@/types";
 
@@ -58,19 +59,14 @@ async function verifyInBatches(
 export async function POST(request: NextRequest) {
   try {
     const filters: RecommendationFilters = await request.json();
-
-    // Check cache first
     const filterKey = buildFilterKey(filters);
-    const existingCache = await readCache<RecommendationCache & { filterKey?: string }>(
-      "recommendations_cache.json"
-    );
-    if (existingCache) {
-      const cacheAge = Date.now() - new Date(existingCache.generated_at).getTime();
-      const existingKey = existingCache.filterKey ?? buildFilterKey(existingCache.filters);
-      if (existingKey === filterKey && cacheAge < CACHE_TTL_MS) {
-        return NextResponse.json(existingCache);
-      }
-    }
+
+    // Read watched titles (needed for cache check + exclusion)
+    const watchedItems = (await readCache<WatchedItem[]>("watched.json")) ?? [];
+    const watchedHash = watchedItems
+      .map((w) => w.tmdbId)
+      .sort((a, b) => a - b)
+      .join(",");
 
     // Read enriched ratings
     const enriched = await readCache<EnrichedRating[]>("enriched_ratings.json");
@@ -79,6 +75,23 @@ export async function POST(request: NextRequest) {
         { error: "No enriched data. Run POST /api/enrich first." },
         { status: 400 }
       );
+    }
+
+    // Check cache — invalidate if filters, watched set, or enriched data changed
+    const existingCache = await readCache<
+      RecommendationCache & { filterKey?: string; watchedHash?: string; enrichedCount?: number }
+    >("recommendations_cache.json");
+    if (existingCache) {
+      const cacheAge = Date.now() - new Date(existingCache.generated_at).getTime();
+      const existingKey = existingCache.filterKey ?? buildFilterKey(existingCache.filters);
+      if (
+        existingKey === filterKey &&
+        (existingCache.watchedHash ?? "") === watchedHash &&
+        (existingCache.enrichedCount ?? 0) === enriched.length &&
+        cacheAge < CACHE_TTL_MS
+      ) {
+        return NextResponse.json(existingCache);
+      }
     }
 
     // Filter ratings by user criteria
@@ -95,15 +108,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate recommendations via Claude
+    // Generate recommendations via Claude (with watched exclusions)
     const platformNames = filters.providers.map(
       (p) => STREAMING_PROVIDERS[p].name
     );
+    const excludeTitles = watchedItems.map((w) => ({ title: w.title, year: w.year }));
     const claudeRecs = await generateRecommendations(filtered, {
       type: filters.type,
       genreCategories: filters.genreCategories,
       platforms: platformNames,
-    });
+    }, excludeTitles);
 
     // Verify recommendations against TMDB (batched concurrency)
     const verified = await verifyInBatches(
@@ -111,10 +125,17 @@ export async function POST(request: NextRequest) {
       filters.type,
       filters.providers
     );
-    const recommendations = verified.filter((r): r is Recommendation => r !== null);
 
-    const cache: RecommendationCache & { filterKey: string } = {
+    // Safety net: filter out any watched titles Claude might have included
+    const watchedTmdbIds = new Set(watchedItems.map((w) => w.tmdbId));
+    const recommendations = verified
+      .filter((r): r is Recommendation => r !== null)
+      .filter((r) => !watchedTmdbIds.has(r.title.tmdbId));
+
+    const cache: RecommendationCache & { filterKey: string; watchedHash: string; enrichedCount: number } = {
       filterKey,
+      watchedHash,
+      enrichedCount: enriched.length,
       filters,
       recommendations,
       generated_at: new Date().toISOString(),

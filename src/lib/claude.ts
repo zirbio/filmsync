@@ -17,7 +17,8 @@ export async function generateRecommendations(
     type: "movie" | "tv";
     genreCategories: string[];
     platforms: string[];
-  }
+  },
+  excludeTitles?: { title: string; year: number }[]
 ): Promise<ClaudeRecommendation[]> {
   const client = getClient();
 
@@ -52,7 +53,7 @@ INSTRUCCIONES:
 - Basa tus recomendaciones en tu propio conocimiento cinematográfico. NO inventes títulos que no existan.
 - Prioriza títulos que compartan ADN con los que el usuario puntuó más alto: mismo director, misma escuela cinematográfica, temáticas afines, tono similar.
 - NO recomiendes documentales, stand-ups, conciertos, especiales de TV ni programas de telerrealidad.
-- NO recomiendes ningún título que aparezca en el historial del usuario.
+- NO recomiendes ningún título que aparezca en el historial del usuario.${excludeTitles && excludeTitles.length > 0 ? `\n\nTÍTULOS QUE EL USUARIO YA HA VISTO O DESCARTADO (NO recomiendes NINGUNO de estos):\n${excludeTitles.map((t) => `- "${t.title}" (${t.year})`).join("\n")}` : ""}
 - En la explicación, referencia títulos concretos del historial del usuario. Ejemplo: "Si te gustó Goodfellas por su retrato del crimen organizado, esta te enganchará por...".
 - Sé honesto: si no estás seguro de que un título esté disponible en streaming en España, inclúyelo igualmente con un score más bajo.
 - El tono de las explicaciones debe ser entre cinéfilo y casual, como un amigo que sabe mucho de cine.
