@@ -6,10 +6,10 @@ import { filterRatingsByCriteria } from "@/lib/rating-filter";
 import type {
   EnrichedRating,
   RecommendationFilters,
-  RecommendationCache,
   Recommendation,
   ClaudeRecommendation,
   WatchedItem,
+  PersistedRecommendationCache,
 } from "@/types";
 import { STREAMING_PROVIDERS } from "@/types";
 
@@ -61,14 +61,37 @@ export async function POST(request: NextRequest) {
     const filters: RecommendationFilters = await request.json();
     const filterKey = buildFilterKey(filters);
 
-    // Read watched titles (needed for cache check + exclusion)
-    const watchedItems = (await readCache<WatchedItem[]>("watched.json")) ?? [];
+    // Read watched + existing cache in parallel (both small files)
+    const [watchedItems, existingCache] = await Promise.all([
+      readCache<WatchedItem[]>("watched.json").then((w) => w ?? []),
+      readCache<PersistedRecommendationCache>("recommendations_cache.json"),
+    ]);
+
     const watchedHash = watchedItems
       .map((w) => w.tmdbId)
       .sort((a, b) => a - b)
       .join(",");
 
-    // Read enriched ratings
+    // Quick cache check before reading the large enriched file
+    if (existingCache) {
+      const cacheAge = Date.now() - new Date(existingCache.generated_at).getTime();
+      if (
+        existingCache.filterKey === filterKey &&
+        existingCache.watchedHash === watchedHash &&
+        cacheAge < CACHE_TTL_MS
+      ) {
+        // Defer enriched fingerprint check — only read enriched file if other fields match
+        const enriched = await readCache<EnrichedRating[]>("enriched_ratings.json");
+        if (enriched && enriched.length > 0) {
+          const enrichedFingerprint = `${enriched.length}:${enriched.reduce((sum, r) => sum + r.rating10, 0)}`;
+          if (existingCache.enrichedFingerprint === enrichedFingerprint) {
+            return NextResponse.json(existingCache);
+          }
+        }
+      }
+    }
+
+    // Cache miss — read enriched ratings
     const enriched = await readCache<EnrichedRating[]>("enriched_ratings.json");
     if (!enriched || enriched.length === 0) {
       return NextResponse.json(
@@ -77,25 +100,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Build enriched data fingerprint (count + sum of ratings detects both additions and updates)
     const enrichedFingerprint = `${enriched.length}:${enriched.reduce((sum, r) => sum + r.rating10, 0)}`;
-
-    // Check cache — invalidate if filters, watched set, or enriched data changed
-    const existingCache = await readCache<
-      RecommendationCache & { filterKey?: string; watchedHash?: string; enrichedFingerprint?: string }
-    >("recommendations_cache.json");
-    if (existingCache) {
-      const cacheAge = Date.now() - new Date(existingCache.generated_at).getTime();
-      const existingKey = existingCache.filterKey ?? buildFilterKey(existingCache.filters);
-      if (
-        existingKey === filterKey &&
-        (existingCache.watchedHash ?? "") === watchedHash &&
-        (existingCache.enrichedFingerprint ?? "") === enrichedFingerprint &&
-        cacheAge < CACHE_TTL_MS
-      ) {
-        return NextResponse.json(existingCache);
-      }
-    }
 
     // Filter ratings by user criteria
     const filtered = filterRatingsByCriteria(enriched, {
@@ -135,7 +140,7 @@ export async function POST(request: NextRequest) {
       .filter((r): r is Recommendation => r !== null)
       .filter((r) => !watchedTmdbIds.has(r.title.tmdbId));
 
-    const cache: RecommendationCache & { filterKey: string; watchedHash: string; enrichedFingerprint: string } = {
+    const cache: PersistedRecommendationCache = {
       filterKey,
       watchedHash,
       enrichedFingerprint,
@@ -153,7 +158,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  const cache = await readCache<RecommendationCache>(
+  const cache = await readCache<PersistedRecommendationCache>(
     "recommendations_cache.json"
   );
   if (!cache) {

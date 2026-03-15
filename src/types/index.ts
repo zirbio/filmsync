@@ -129,6 +129,12 @@ export interface RecommendationCache {
   generated_at: string;
 }
 
+export interface PersistedRecommendationCache extends RecommendationCache {
+  filterKey: string;
+  watchedHash: string;
+  enrichedFingerprint: string;
+}
+
 // --- Trakt Sync Types ---
 
 export interface TraktToken {
