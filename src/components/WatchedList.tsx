@@ -6,12 +6,17 @@ import { Undo2, Eye } from "lucide-react";
 import { TitleCard } from "@/components/TitleCard";
 import type { WatchedItem } from "@/types";
 
-export function WatchedList() {
+interface WatchedListProps {
+  refreshKey: number;
+}
+
+export function WatchedList({ refreshKey }: WatchedListProps) {
   const [items, setItems] = useState<WatchedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
+      setLoading(true);
       try {
         const res = await fetch("/api/watched");
         if (res.ok) {
@@ -25,7 +30,7 @@ export function WatchedList() {
       }
     }
     load();
-  }, []);
+  }, [refreshKey]);
 
   const handleRestore = async (tmdbId: number, type: string) => {
     await fetch("/api/watched", {

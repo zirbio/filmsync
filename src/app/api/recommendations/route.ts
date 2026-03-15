@@ -6,9 +6,10 @@ import { filterRatingsByCriteria } from "@/lib/rating-filter";
 import type {
   EnrichedRating,
   RecommendationFilters,
-  RecommendationCache,
   Recommendation,
   ClaudeRecommendation,
+  WatchedItem,
+  PersistedRecommendationCache,
 } from "@/types";
 import { STREAMING_PROVIDERS } from "@/types";
 
@@ -58,27 +59,41 @@ async function verifyInBatches(
 export async function POST(request: NextRequest) {
   try {
     const filters: RecommendationFilters = await request.json();
-
-    // Check cache first
     const filterKey = buildFilterKey(filters);
-    const existingCache = await readCache<RecommendationCache & { filterKey?: string }>(
-      "recommendations_cache.json"
-    );
-    if (existingCache) {
-      const cacheAge = Date.now() - new Date(existingCache.generated_at).getTime();
-      const existingKey = existingCache.filterKey ?? buildFilterKey(existingCache.filters);
-      if (existingKey === filterKey && cacheAge < CACHE_TTL_MS) {
-        return NextResponse.json(existingCache);
-      }
-    }
 
-    // Read enriched ratings
+    // Read watched + existing cache in parallel (both small files)
+    const [watchedItems, existingCache] = await Promise.all([
+      readCache<WatchedItem[]>("watched.json").then((w) => w ?? []),
+      readCache<PersistedRecommendationCache>("recommendations_cache.json"),
+    ]);
+
+    const watchedHash = watchedItems
+      .map((w) => w.tmdbId)
+      .sort((a, b) => a - b)
+      .join(",");
+
+    // Read enriched ratings (needed for fingerprint check and generation)
     const enriched = await readCache<EnrichedRating[]>("enriched_ratings.json");
     if (!enriched || enriched.length === 0) {
       return NextResponse.json(
         { error: "No enriched data. Run POST /api/enrich first." },
         { status: 400 }
       );
+    }
+
+    const enrichedFingerprint = `${enriched.length}:${enriched.reduce((sum, r) => sum + r.rating10, 0)}`;
+
+    // Check cache — invalidate if filters, watched set, or enriched data changed
+    if (existingCache) {
+      const cacheAge = Date.now() - new Date(existingCache.generated_at).getTime();
+      if (
+        existingCache.filterKey === filterKey &&
+        existingCache.watchedHash === watchedHash &&
+        existingCache.enrichedFingerprint === enrichedFingerprint &&
+        cacheAge < CACHE_TTL_MS
+      ) {
+        return NextResponse.json(existingCache);
+      }
     }
 
     // Filter ratings by user criteria
@@ -95,15 +110,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate recommendations via Claude
+    // Generate recommendations via Claude (with watched exclusions)
     const platformNames = filters.providers.map(
       (p) => STREAMING_PROVIDERS[p].name
     );
+    const excludeTitles = watchedItems.map((w) => ({ title: w.title, year: w.year }));
     const claudeRecs = await generateRecommendations(filtered, {
       type: filters.type,
       genreCategories: filters.genreCategories,
       platforms: platformNames,
-    });
+    }, excludeTitles);
 
     // Verify recommendations against TMDB (batched concurrency)
     const verified = await verifyInBatches(
@@ -111,10 +127,17 @@ export async function POST(request: NextRequest) {
       filters.type,
       filters.providers
     );
-    const recommendations = verified.filter((r): r is Recommendation => r !== null);
 
-    const cache: RecommendationCache & { filterKey: string } = {
+    // Safety net: filter out any watched titles Claude might have included
+    const watchedTmdbIds = new Set(watchedItems.map((w) => w.tmdbId));
+    const recommendations = verified
+      .filter((r): r is Recommendation => r !== null)
+      .filter((r) => !watchedTmdbIds.has(r.title.tmdbId));
+
+    const cache: PersistedRecommendationCache = {
       filterKey,
+      watchedHash,
+      enrichedFingerprint,
       filters,
       recommendations,
       generated_at: new Date().toISOString(),
@@ -129,7 +152,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  const cache = await readCache<RecommendationCache>(
+  const cache = await readCache<PersistedRecommendationCache>(
     "recommendations_cache.json"
   );
   if (!cache) {

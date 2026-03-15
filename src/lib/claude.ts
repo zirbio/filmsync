@@ -11,13 +11,18 @@ function extractJSON(text: string): string {
   return text.trim();
 }
 
+function sanitizeTitle(s: string): string {
+  return s.replace(/[\r\n"\\]/g, " ").slice(0, 200);
+}
+
 export async function generateRecommendations(
   filteredRatings: EnrichedRating[],
   filters: {
     type: "movie" | "tv";
     genreCategories: string[];
     platforms: string[];
-  }
+  },
+  excludeTitles?: { title: string; year: number }[]
 ): Promise<ClaudeRecommendation[]> {
   const client = getClient();
 
@@ -34,6 +39,14 @@ export async function generateRecommendations(
         `- "${r.title}" (${r.year}) — Director: ${r.directors} — Nota: ${r.rating10}/10`
     )
     .join("\n");
+
+  const excludeSection =
+    excludeTitles && excludeTitles.length > 0
+      ? `\n\nTÍTULOS QUE EL USUARIO YA HA VISTO O DESCARTADO (NO recomiendes NINGUNO de estos):\n` +
+        excludeTitles
+          .map((t) => `- "${sanitizeTitle(t.title)}" (${Number(t.year)})`)
+          .join("\n")
+      : "";
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-5-20250929",
@@ -52,7 +65,7 @@ INSTRUCCIONES:
 - Basa tus recomendaciones en tu propio conocimiento cinematográfico. NO inventes títulos que no existan.
 - Prioriza títulos que compartan ADN con los que el usuario puntuó más alto: mismo director, misma escuela cinematográfica, temáticas afines, tono similar.
 - NO recomiendes documentales, stand-ups, conciertos, especiales de TV ni programas de telerrealidad.
-- NO recomiendes ningún título que aparezca en el historial del usuario.
+- NO recomiendes ningún título que aparezca en el historial del usuario.${excludeSection}
 - En la explicación, referencia títulos concretos del historial del usuario. Ejemplo: "Si te gustó Goodfellas por su retrato del crimen organizado, esta te enganchará por...".
 - Sé honesto: si no estás seguro de que un título esté disponible en streaming en España, inclúyelo igualmente con un score más bajo.
 - El tono de las explicaciones debe ser entre cinéfilo y casual, como un amigo que sabe mucho de cine.

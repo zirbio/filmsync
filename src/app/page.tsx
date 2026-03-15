@@ -11,6 +11,7 @@ export default function Home() {
   const [hasData, setHasData] = useState(false);
   const [loading, setLoading] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     async function checkSetup() {
@@ -48,6 +49,7 @@ export default function Home() {
   const handleImportComplete = () => {
     setHasData(true);
     setImportOpen(false);
+    setRefreshKey((k) => k + 1);
   };
 
   return (
@@ -57,10 +59,11 @@ export default function Home() {
           <DiscoverView
             hasData={hasData}
             onNeedImport={() => setImportOpen(true)}
+            refreshKey={refreshKey}
           />
         }
         libraryView={
-          <LibraryView onImport={() => setImportOpen(true)} />
+          <LibraryView onImport={() => setImportOpen(true)} refreshKey={refreshKey} />
         }
       />
       <ImportModal

@@ -54,27 +54,46 @@ export async function enrichRating(rating: FilmAffinityRating): Promise<Enriched
 /**
  * Enrich a batch of ratings, skipping already-enriched titles.
  * Saves checkpoint every 20 items and throttles 100ms between TMDB calls.
- * Returns { results, newlyEnriched, notFound }.
+ * Returns { results, newlyEnriched, updated, notFound }.
  */
 export async function enrichBatch(
   newRatings: FilmAffinityRating[]
-): Promise<{ results: EnrichedRating[]; newlyEnriched: number; notFound: number }> {
+): Promise<{ results: EnrichedRating[]; newlyEnriched: number; updated: number; notFound: number }> {
   const existing = await readCache<EnrichedRating[]>("enriched_ratings.json");
-  const enrichedTitles = new Set(
-    existing?.map((r) => `${r.title}-${r.year}`) ?? []
+  const enrichedMap = new Map<string, EnrichedRating>(
+    existing?.map((r) => [`${r.title}-${r.year}`, r]) ?? []
   );
 
-  const toEnrich = newRatings.filter(
-    (r) => !enrichedTitles.has(`${r.title}-${r.year}`)
-  );
+  const toEnrich: FilmAffinityRating[] = [];
+  let updated = 0;
 
-  const results: EnrichedRating[] = existing ?? [];
+  for (const rating of newRatings) {
+    const key = `${rating.title}-${rating.year}`;
+    const cached = enrichedMap.get(key);
+    if (cached) {
+      if (cached.rating10 !== rating.rating10 || cached.watchedDate !== rating.watchedDate) {
+        enrichedMap.set(key, {
+          ...cached,
+          rating10: rating.rating10,
+          rating: rating.rating,
+          watchedDate: rating.watchedDate,
+        });
+        updated++;
+      }
+    } else {
+      toEnrich.push(rating);
+    }
+  }
+
+  const results: EnrichedRating[] = [...enrichedMap.values()];
   let processed = 0;
+  let notFound = 0;
 
   for (const rating of toEnrich) {
     const enriched = await enrichRating(rating);
     results.push(enriched);
     processed++;
+    if (enriched.tmdbId === null) notFound++;
 
     if (processed % 20 === 0) {
       await writeCache("enriched_ratings.json", results);
@@ -88,6 +107,7 @@ export async function enrichBatch(
   return {
     results,
     newlyEnriched: processed,
-    notFound: results.filter((r) => r.tmdbId === null).length,
+    updated,
+    notFound,
   };
 }
